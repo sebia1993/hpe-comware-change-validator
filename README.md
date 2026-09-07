@@ -10,6 +10,10 @@
 
 > 실제 운영망의 IP, Hostname, 계정, 원본 로그와 장비 출력은 공개 저장소에 포함하지 않습니다. 문서와 샘플은 비식별 값만 사용합니다.
 
+## 채용 검토자를 위한 읽는 순서
+
+[포트폴리오 검토 안내](docs/PORTFOLIO_REVIEW_KO.md)에서 **설계 질문 → 실제 코드 → 실패 사례 테스트 → 장비 없는 재현 → 검증 한계** 순서로 확인할 수 있습니다. 아래 운영 설명과 함께 읽으면 기능 주장과 공개 근거를 대조할 수 있습니다.
+
 ## 한눈에 보기
 
 | 항목 | 내용 |
@@ -198,6 +202,8 @@ Web:  web\start_webapp.cmd
 GitHub의 `Source code (zip)` / `Source code (tar.gz)`는 실행용 Windows 배포 파일이 아닙니다. ZIP, `.sha256.txt`, release manifest, CycloneDX SBOM은 서로 독립된 Release asset입니다. ZIP build provenance와 ZIP에 연결된 SBOM attestation도 함께 검증할 수 있습니다.
 
 ## 개발 및 검증
+
+소스 실행과 테스트 준비는 [장비 없는 재현 안내](docs/PORTFOLIO_REVIEW_KO.md)를 참고하십시오. 테스트는 `backbone_state_tracker` 패키지명을 사용하므로 해당 디렉터리명으로 clone하고 부모 경로를 `PYTHONPATH`에 지정해야 합니다.
 
 소스 실행:
 
