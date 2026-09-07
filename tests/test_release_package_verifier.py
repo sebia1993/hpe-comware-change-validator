@@ -62,6 +62,7 @@ def _common_entries() -> dict[str, str]:
         "backbone_state_tracker/docs/ARCHITECTURE.md": "architecture",
         "backbone_state_tracker/docs/CHANGE_VALIDATION_LOGIC.md": "change validation logic",
         "backbone_state_tracker/docs/VALIDATION_REPORT.md": "validation report",
+        "backbone_state_tracker/docs/PORTFOLIO_REVIEW_KO.md": "portfolio review",
         "backbone_state_tracker/docs/USER_GUIDE.md": "user md",
         "backbone_state_tracker/docs/USER_GUIDE.html": "user html",
         "backbone_state_tracker/docs/COMMAND_GUIDE.md": "command md",
@@ -632,6 +633,21 @@ class ReleasePackageVerifierTests(unittest.TestCase):
             self.assertTrue(
                 any("backbone_state_tracker/docs/RELEASE_CHECKLIST.md" in error for error in result.errors)
             )
+
+    def test_missing_portfolio_review_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dist = Path(tmp)
+            package = dist / "backbone_state_tracker_v0.9.0_20260824_source.zip"
+            entries = _source_entries()
+            missing_document = "backbone_state_tracker/docs/PORTFOLIO_REVIEW_KO.md"
+            del entries[missing_document]
+            _write_zip(package, entries)
+            write_package_checksum(package, "0.9.0", generated_at="2026-08-24T10:00:00+09:00")
+
+            result = verify_release_package(package)
+
+            self.assertFalse(result.ok)
+            self.assertTrue(any(missing_document in error for error in result.errors))
 
     def test_missing_user_guide_image_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

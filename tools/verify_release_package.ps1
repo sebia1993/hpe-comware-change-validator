@@ -228,6 +228,7 @@ $commonRequired = @(
     "backbone_state_tracker/docs/ARCHITECTURE.md",
     "backbone_state_tracker/docs/CHANGE_VALIDATION_LOGIC.md",
     "backbone_state_tracker/docs/VALIDATION_REPORT.md",
+    "backbone_state_tracker/docs/PORTFOLIO_REVIEW_KO.md",
     "backbone_state_tracker/docs/USER_GUIDE.md",
     "backbone_state_tracker/docs/USER_GUIDE.html",
     "backbone_state_tracker/docs/COMMAND_GUIDE.md",
