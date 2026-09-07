@@ -29,7 +29,7 @@ $env:PYTHONPATH=(Split-Path (Get-Location) -Parent)
 .\.venv\Scripts\python.exe -m unittest discover -s tests -p test_collection_security.py -v
 ```
 
-첫 테스트는 합성 데이터를 임시 디렉터리에 저장하고 보고서까지 검사한 뒤 정리합니다. 실제 장비의 전원을 내리거나 SSH로 접속하는 절차가 아닙니다. 보존되는 화면·보고서를 보고 싶다면 `python app.py`로 GUI를 열고 **샘플 검증 생성**을 사용합니다. [사용자 가이드](USER_GUIDE.md)의 샘플 검증 흐름으로 이어집니다.
+첫 테스트는 합성 데이터를 임시 디렉터리에 저장하고 보고서까지 검사한 뒤 정리합니다. 실제 장비의 전원을 내리거나 SSH로 접속하는 절차가 아닙니다. 보존되는 화면·보고서를 보고 싶다면 `.\.venv\Scripts\python.exe app.py`로 GUI를 열고 **샘플 검증 생성**을 사용합니다. [사용자 가이드](USER_GUIDE.md)의 샘플 검증 흐름으로 이어집니다.
 
 ## 결과를 읽을 때 확인할 사례
 
