@@ -67,7 +67,10 @@ def main() -> None:
             app.diff_tree.selection_set(rows[0])
             app._on_diff_detail_selected(None)
             # Reproduce scrolling the actual details viewport to the before/after values.
+            app.update()  # Drain the TreeviewSelect callback before scrolling.
             app.diff_detail_text.yview("15.0")
+            app.update()
+            assert int(app.diff_detail_text.index("@0,0").split(".")[0]) >= 14
             capture_window(app, output / "selected-change.png")
             # Keep generated paths recognizable without exposing runner-local directories.
             logs = app.log_text.get("1.0", "end").replace(str(runtime), "DEMO_RUNTIME")
