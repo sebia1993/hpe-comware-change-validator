@@ -1,5 +1,5 @@
 # Runtime compatibility policy. Install deployments from requirements-runtime.lock.
 netmiko>=4.7,<5
-paramiko>=4,<5
+paramiko>=5.0.0,<6
 PyYAML>=6.0.3,<7
 openpyxl>=3.1.5,<4
