@@ -35,7 +35,12 @@ def main() -> None:
         gui.KNOWN_HOSTS_PATH = gui.CONFIG_DIR / "known_hosts"
         app = gui.BackboneStateTrackerApp()
         try:
+            app.maxsize(1920, 1400)
             app.geometry("1400x1000+0+0")
+            app.update()
+            assert app.winfo_width() >= 1300 and app.winfo_height() >= 950, (
+                app.geometry()
+            )
             app._apply_devices(
                 [
                     Device(name="backbone3", host="192.0.2.3"),
