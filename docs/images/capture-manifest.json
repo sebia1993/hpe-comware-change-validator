@@ -1,0 +1,29 @@
+{
+  "application": "HPE Comware Change Validator",
+  "application_version": "0.9.0",
+  "source_commit": "0194f83fd3b7ed3a8166ebba6ac1150ab630716f",
+  "capture_os": "Windows-2025Server-10.0.26100-SP0",
+  "python": "3.12.10",
+  "method": "Actual Tk window / PrintWindow; built-in synthetic sample -> DiffEngine -> report -> GUI; runtime paths displayed as DEMO_RUNTIME",
+  "data": "synthetic documentation fixtures only",
+  "network": "socket connection attempts blocked; no device or account access",
+  "workflow_run": "34176682989",
+  "images": [
+    {
+      "file": "compare-results.png",
+      "sha256": "0f3ceb87248b5ecb397ed4fd33027094e3a5062332664a0fe1aea3490df56d0b"
+    },
+    {
+      "file": "selected-change.png",
+      "sha256": "d94127041ca45649eed6dbbe92c81cfbf9228b8060952a44977ba3c28118164b"
+    },
+    {
+      "file": "settings-collection.png",
+      "sha256": "c6945d5227a19b892d2b6dd2cb2a923728dbfded625e3b9fb884ea852bb36634"
+    },
+    {
+      "file": "work-log.png",
+      "sha256": "8f79fccb2ece4d83dd6d5cff05645cf2cb7af0e05db190e73569d3876ac978c8"
+    }
+  ]
+}

@@ -130,19 +130,11 @@ flowchart LR
 
 ## 실행 화면
 
-저장소에는 비식별 샘플 데이터로 만든 화면 예시가 포함되어 있습니다.
+[화면별 사용 흐름](docs/USAGE_SCREENSHOTS_KO.md)에서 설정 → 샘플 비교 → 변경 근거 → 작업 로그를 확인할 수 있습니다. 아래는 현재 v0.9.0 앱에서 합성 샘플을 생성·비교한 Windows 화면입니다. 실제 장비 접속은 하지 않았습니다.
 
-### 장비 설정 / 수집
+![현재 앱의 합성 장비 설정](docs/images/settings-collection.png)
 
-![백본 상태 수집 화면](docs/images/settings-collection.png)
-
-### 작업 전후 비교 결과
-
-![백본 상태 비교 결과](docs/images/compare-results.png)
-
-### 작업 단계 기록
-
-![백본 작업 기록](docs/images/work-log.png)
+![선택한 변경 행과 기준·비교값](docs/images/selected-change.png)
 
 ## 실제 장비 없이 검증
 

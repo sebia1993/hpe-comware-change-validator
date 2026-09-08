@@ -43,6 +43,7 @@ COMMON_REQUIRED = {
     "backbone_state_tracker/docs/CHANGE_VALIDATION_LOGIC.md",
     "backbone_state_tracker/docs/VALIDATION_REPORT.md",
     "backbone_state_tracker/docs/PORTFOLIO_REVIEW_KO.md",
+    "backbone_state_tracker/docs/USAGE_SCREENSHOTS_KO.md",
     "backbone_state_tracker/docs/USER_GUIDE.md",
     "backbone_state_tracker/docs/USER_GUIDE.html",
     "backbone_state_tracker/docs/COMMAND_GUIDE.md",
@@ -62,6 +63,8 @@ COMMON_REQUIRED = {
     "backbone_state_tracker/docs/images/settings-collection.png",
     "backbone_state_tracker/docs/images/compare-results.png",
     "backbone_state_tracker/docs/images/work-log.png",
+    "backbone_state_tracker/docs/images/selected-change.png",
+    "backbone_state_tracker/docs/images/capture-manifest.json",
 }
 
 SOURCE_REQUIRED = COMMON_REQUIRED | {
@@ -109,6 +112,8 @@ SOURCE_REQUIRED = COMMON_REQUIRED | {
     "backbone_state_tracker/tools/build_windows_exe.ps1",
     "backbone_state_tracker/tools/stamp_sbom_identity.py",
     "backbone_state_tracker/tools/write_release_manifest.py",
+    "backbone_state_tracker/tools/capture_windows.py",
+    "backbone_state_tracker/tools/capture_usage_screenshots.py",
     "backbone_state_tracker/tools/verify_release_package.py",
     "backbone_state_tracker/tools/verify_release_package.ps1",
     "backbone_state_tracker/tools/verify_release_assets.py",

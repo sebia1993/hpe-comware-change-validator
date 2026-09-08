@@ -63,6 +63,7 @@ def _common_entries() -> dict[str, str]:
         "backbone_state_tracker/docs/CHANGE_VALIDATION_LOGIC.md": "change validation logic",
         "backbone_state_tracker/docs/VALIDATION_REPORT.md": "validation report",
         "backbone_state_tracker/docs/PORTFOLIO_REVIEW_KO.md": "portfolio review",
+        "backbone_state_tracker/docs/USAGE_SCREENSHOTS_KO.md": "usage screenshots",
         "backbone_state_tracker/docs/USER_GUIDE.md": "user md",
         "backbone_state_tracker/docs/USER_GUIDE.html": "user html",
         "backbone_state_tracker/docs/COMMAND_GUIDE.md": "command md",
@@ -82,6 +83,8 @@ def _common_entries() -> dict[str, str]:
         "backbone_state_tracker/docs/images/settings-collection.png": "settings image",
         "backbone_state_tracker/docs/images/compare-results.png": "compare image",
         "backbone_state_tracker/docs/images/work-log.png": "log image",
+        "backbone_state_tracker/docs/images/selected-change.png": "selected change image",
+        "backbone_state_tracker/docs/images/capture-manifest.json": "capture provenance",
     }
 
 
@@ -132,6 +135,8 @@ def _source_entries() -> dict[str, str]:
             "backbone_state_tracker/tools/build_release.ps1": "source build",
             "backbone_state_tracker/tools/build_windows_exe.ps1": "exe build",
             "backbone_state_tracker/tools/stamp_sbom_identity.py": "SBOM identity tool",
+            "backbone_state_tracker/tools/capture_windows.py": "Windows capture helper",
+            "backbone_state_tracker/tools/capture_usage_screenshots.py": "usage capture",
             "backbone_state_tracker/tools/write_release_manifest.py": "manifest tool",
             "backbone_state_tracker/tools/verify_release_package.py": "verifier",
             "backbone_state_tracker/tools/verify_release_package.ps1": "powershell verifier",
