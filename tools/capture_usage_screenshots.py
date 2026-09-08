@@ -66,6 +66,8 @@ def main() -> None:
             assert rows, "Built-in sample must produce visible changes"
             app.diff_tree.selection_set(rows[0])
             app._on_diff_detail_selected(None)
+            # Reproduce scrolling the actual details viewport to the before/after values.
+            app.diff_detail_text.yview("15.0")
             capture_window(app, output / "selected-change.png")
             # Keep generated paths recognizable without exposing runner-local directories.
             logs = app.log_text.get("1.0", "end").replace(str(runtime), "DEMO_RUNTIME")
