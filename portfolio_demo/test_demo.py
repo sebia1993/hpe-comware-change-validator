@@ -47,6 +47,13 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(failed["status"], "Unknown / Collection Error")
         self.assertEqual(failed["counts"]["Critical"], 0)
         self.assertEqual(failed["counts"]["Unknown"], 1)
+        self.assertTrue(
+            all(
+                not row["Difference"]
+                for row in failed["rows"]
+                if row["Classification"] == "Unknown"
+            )
+        )
         self.assertIn('data-filter="Unknown"', failed["html"])
         self.assertIn("Unknown / Collection Error", failed["html"])
         self.assertIn("수집에 성공한 항목", failed["html"])

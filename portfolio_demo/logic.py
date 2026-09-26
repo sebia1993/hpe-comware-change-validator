@@ -151,7 +151,7 @@ def run_demo(scenario: str):
             .replace(tmp, "Demo")
         )
     rows = []
-    for item in summary.items:
+    for item in export_summary.items:
         if item.command_id not in data["commands"]:
             continue
         rows.append(
