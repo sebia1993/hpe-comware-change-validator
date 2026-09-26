@@ -63,7 +63,7 @@ if "result" in st.session_state:
     )
     with st.expander("HTML Report Preview"):
         st.caption(
-            "기존 보고서의 명령 실패 경고는 장비 장애를 의미하지 않습니다. 수집 완전성은 상단 Unknown 분류를 확인하세요."
+            "수집 실패는 HTML에서도 Unknown으로 분리합니다. 확인 불가 필터에서 수집 오류 근거를 확인할 수 있습니다."
         )
         st.iframe(result["html"], height=650)
 with st.expander("Architecture / How It Works"):

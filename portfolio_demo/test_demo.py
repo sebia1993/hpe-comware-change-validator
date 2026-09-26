@@ -47,6 +47,21 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(failed["status"], "Unknown / Collection Error")
         self.assertEqual(failed["counts"]["Critical"], 0)
         self.assertEqual(failed["counts"]["Unknown"], 1)
+        self.assertTrue(
+            all(
+                not row["Difference"]
+                for row in failed["rows"]
+                if row["Classification"] == "Unknown"
+            )
+        )
+        self.assertIn('data-filter="Unknown"', failed["html"])
+        self.assertIn("Unknown / Collection Error", failed["html"])
+        self.assertIn("수집에 성공한 항목", failed["html"])
+        self.assertNotIn("data-severity='Critical'", failed["html"])
+        self.assertNotIn("data-severity='Warning'", failed["html"])
+        self.assertIn("data-severity='Unknown'", failed["html"])
+        # Confirm real observed critical findings remain critical in the export.
+        self.assertIn("data-severity='Critical'", critical["html"])
         for result in (normal, unexpected, critical, failed):
             self.assertEqual(len(result["rows"]), 10)
             self.assertIn("<!doctype html", result["html"].lower())

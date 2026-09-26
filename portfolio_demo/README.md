@@ -1,5 +1,7 @@
 # Public Streamlit Demo
 
+**[Live Demo](https://sebia1993-comware-validator-demo.streamlit.app/)** · [GitHub Source](https://github.com/sebia1993/hpe-comware-change-validator)
+
 별도 장비와 계정 없이 원 프로젝트의 Python 분석 로직을 실행합니다.
 비식별 문서 주소와 합성 CLI만 사용하며, 외부 연결·내부 파일 업로드는 지원하지 않습니다.
 
@@ -22,3 +24,5 @@ entrypoint `portfolio_demo/app.py`, Python 3.12.
 Fixture·AppTest·Windows CI는 실제 장비/운영망 검증이 아닙니다.
 
 분류 안내: 엔진의 severity와 expected_changes 결과를 유지합니다. 계획에 없는 실제 출력 변경은 severity가 Info여도 Unexpected로 표시하고, 실패한 명령은 Unknown으로 표시합니다. 정상 수치의 동일한 관측은 Unchanged입니다.
+
+HTML 내보내기는 기존 ReportWriter를 재사용하며, 데모 어댑터가 수집 실패를 Unknown 필터와 근거로 분리합니다. 누락된 CLI를 장애나 삭제된 설정으로 판정하지 않습니다.
