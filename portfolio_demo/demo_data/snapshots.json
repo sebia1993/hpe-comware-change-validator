@@ -1,0 +1,76 @@
+{
+  "commands": {
+    "interface_brief": [
+      "display interface brief",
+      "interface",
+      "GE1/0/1 UP\nGE1/0/2 UP"
+    ],
+    "interface_description": [
+      "display interface description",
+      "interface",
+      "GE1/0/1 Description Uplink-A"
+    ],
+    "link_aggregation_summary": [
+      "display link-aggregation summary",
+      "lacp",
+      "Aggregation1 selected ports: 2"
+    ],
+    "vlan": [
+      "display vlan",
+      "vlan",
+      "VLAN ID: 10\nName: Users"
+    ],
+    "stp_brief": [
+      "display stp brief",
+      "stp",
+      "Root Bridge: 0000-5e00-5301\nGE1/0/1 FORWARDING"
+    ],
+    "ospf_peer": [
+      "display ospf peer",
+      "routing",
+      "Neighbor 192.0.2.2 State Full"
+    ],
+    "vrrp_status": [
+      "display vrrp verbose",
+      "routing",
+      "VRID 1 State Master Priority 110 VIP 192.0.2.254"
+    ],
+    "cpu_usage": [
+      "display cpu-usage",
+      "resource",
+      "5 seconds: 10%\n1 minute: 10%\n5 minutes: 10%"
+    ],
+    "memory": [
+      "display memory",
+      "resource",
+      "FreeRatio: 70%"
+    ],
+    "power": [
+      "display power",
+      "hardware",
+      "Power 1 State: Normal"
+    ]
+  },
+  "scenarios": {
+    "no_change": {},
+    "expected": {
+      "vlan": "VLAN ID: 10\nName: Users\nVLAN ID: 20\nName: Demo",
+      "interface_description": "GE1/0/1 Description Demo-Uplink"
+    },
+    "unexpected": {
+      "stp_brief": "Root Bridge: 0000-5e00-5302\nGE1/0/1 FORWARDING",
+      "vrrp_status": "VRID 1 State Backup Priority 100 VIP 192.0.2.254"
+    },
+    "critical": {
+      "interface_brief": "GE1/0/1 DOWN\nGE1/0/2 UP",
+      "link_aggregation_summary": "Aggregation1 selected ports: 1",
+      "ospf_peer": "Neighbor 192.0.2.2 State Init",
+      "cpu_usage": "5 seconds: 85%\n1 minute: 80%\n5 minutes: 75%",
+      "memory": "FreeRatio: 20%",
+      "power": "Power 1 State: Fault"
+    },
+    "collection_failed": {
+      "ospf_peer": null
+    }
+  }
+}
