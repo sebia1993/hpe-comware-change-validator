@@ -24,3 +24,5 @@ entrypoint `portfolio_demo/app.py`, Python 3.12.
 Fixture·AppTest·Windows CI는 실제 장비/운영망 검증이 아닙니다.
 
 분류 안내: 엔진의 severity와 expected_changes 결과를 유지합니다. 계획에 없는 실제 출력 변경은 severity가 Info여도 Unexpected로 표시하고, 실패한 명령은 Unknown으로 표시합니다. 정상 수치의 동일한 관측은 Unchanged입니다.
+
+HTML 내보내기는 기존 ReportWriter를 재사용하며, 데모 어댑터가 수집 실패를 Unknown 필터와 근거로 분리합니다. 누락된 CLI를 장애나 삭제된 설정으로 판정하지 않습니다.

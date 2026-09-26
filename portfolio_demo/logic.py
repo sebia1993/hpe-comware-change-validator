@@ -1,6 +1,7 @@
 """Use production SnapshotStore, DiffEngine, expected-change rules and HTML writer."""
 
 from dataclasses import asdict, replace
+from html import escape
 import json
 from pathlib import Path
 import sys
@@ -89,8 +90,60 @@ def run_demo(scenario: str):
         )
         summary = DiffEngine(rules).compare(before, after)
         report_path = Path(tmp) / "report.html"
-        ReportWriter._write_html(report_path, summary)
+        # Adapt only the public export: a missing CLI result cannot prove a
+        # routing failure or removal of every line in the previous snapshot.
+        export_summary = replace(
+            summary,
+            items=[
+                replace(
+                    item,
+                    severity="Unknown",
+                    status="Unknown",
+                    expectation="unknown",
+                    finding_title="Unknown / Collection Error",
+                    summary="수집 실패 · 장비 상태 확인 불가",
+                    impact_reason="CLI 응답이 없어 장비 상태와 변경 여부를 판단할 수 없습니다.",
+                    evidence="Demo timeout",
+                    action_hint="수집 경로를 확인한 뒤 다시 조회하세요.",
+                    diff="",
+                    changed_lines=[],
+                    change_count=0,
+                    change_preview="수집 실패 · 비교 가능한 출력 없음",
+                )
+                if item.command_id in failed
+                else item
+                for item in summary.items
+            ],
+        )
+        ReportWriter._write_html(report_path, export_summary)
         html = report_path.read_text(encoding="utf-8")
+        if failed:
+            notice = (
+                '<section class="problem-summary" aria-label="수집 완전성">'
+                "<h2>Unknown / Collection Error</h2>"
+                "<p>수집 실패: "
+                + escape(", ".join(failed))
+                + " · 장비 장애나 정상 상태로 판단하지 않습니다.</p></section>"
+            )
+            html = html.replace('<div class="wrap">', '<div class="wrap">' + notice, 1)
+            html = html.replace(
+                '<section class="counts" aria-label="등급 필터">',
+                '<section class="counts" aria-label="등급 필터">'
+                '<button class="count" type="button" data-filter="Unknown">'
+                '<span class="count-label">확인 불가</span><strong>'
+                + str(len(failed))
+                + '</strong><span class="count-hint">수집 실패</span></button>',
+                1,
+            )
+            html = html.replace(
+                "const filterLabels = {",
+                'const filterLabels = {"Unknown": "확인 불가",',
+                1,
+            )
+            html = html.replace(
+                "예상되지 않은 긴급/주의 문제가 없습니다.",
+                "수집에 성공한 항목에서 긴급/주의 문제가 확인되지 않았습니다. 실패 항목은 확인 불가입니다.",
+            )
         # The public export retains fixture results, never temporary server paths.
         html = (
             html.replace(str(before), "Pre-change")
