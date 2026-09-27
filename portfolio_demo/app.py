@@ -1,78 +1,191 @@
-from pathlib import Path
 import sys
+from pathlib import Path
+from dataclasses import asdict
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from portfolio_demo.logic import SCENARIOS, run_demo
+from portfolio_demo.runtime import DemoRuntime
+from portfolio_demo.fixture_collector import DEVICES, COMMANDS
+from core.workflow import WORK_STAGE_NAMES, CUSTOM_STAGE
 
 st.set_page_config(
-    page_title="Comware Validator · Public Demo", page_icon="📡", layout="wide"
+    page_title="Comware Change Console · Public Demo v2", page_icon="🔎", layout="wide"
 )
-st.title("HPE Comware Change Validator")
-st.caption("Pre-change → Post-change · 예상된 변경과 예상하지 못한 변경 비교")
-st.info(
-    "공개 Demo Mode · 비식별 Snapshot을 기존 SnapshotStore / DiffEngine / expected_changes 규칙으로 분석합니다. 실제 장비 접속·설정 변경·내부 파일 업로드는 없습니다."
-)
+if "runtime" not in st.session_state:
+    st.session_state.runtime = DemoRuntime()
+r = st.session_state.runtime
+st.title("Comware Change Console")
+st.caption("Public Demo v2 · 합성 CLI → 실제 SnapshotStore → DiffEngine → ReportWriter")
 with st.sidebar:
-    st.subheader("Demo Mode")
-    st.success("실제 장비 연결: 비활성")
-    st.write("분석 / HTML 보고서: 원 프로젝트 코드")
+    st.success("Read-only · 실제 SSH 비활성")
+    st.caption("브라우저 세션별 임시 저장소 · 최대 Snapshot 20개 · 계정 입력 없음")
+    if st.button("Demo Reset"):
+        r.close()
+        st.session_state.runtime = DemoRuntime()
+        st.rerun()
+setup, workspace, results, reports, logs = st.tabs(
+    ["장비 / Preflight", "작업 / Snapshot", "비교 결과", "보고서", "작업 로그"]
+)
+with setup:
+    st.subheader("장비 설정")
+    st.dataframe([asdict(d) for d in DEVICES], hide_index=True)
     st.caption(
-        "수집 실패는 Unknown입니다. Critical은 합성 관측값에 대한 규칙의 판단입니다."
+        f"읽기 전용 명령 {len(COMMANDS)}개 · 문서용 IP에 대한 Preflight 주의는 의도된 설정입니다."
     )
-scenario = st.selectbox("체험 시나리오", list(SCENARIOS), format_func=SCENARIOS.get)
-if st.button("분석 실행", type="primary", width="stretch"):
-    st.session_state.result = (scenario, run_demo(scenario))
-if "result" in st.session_state:
-    selected, result = st.session_state.result
-    st.subheader(f"결과 · {SCENARIOS[selected]}")
-    if selected != scenario:
-        st.info("입력이 변경되었습니다. 분석 실행을 눌러 새 결과를 확인하세요.")
-    (st.success if result["status"] == "Validation Passed" else st.warning)(
-        result["status"]
+    with st.expander("Command Set"):
+        st.dataframe([asdict(c) for c in COMMANDS], hide_index=True)
+    if st.button("설정 점검"):
+        r.check()
+    if r.preflight:
+        st.write(f"오류 {r.preflight.error_count} · 주의 {r.preflight.warning_count}")
+        st.dataframe([asdict(i) for i in r.preflight.issues], hide_index=True)
+with workspace:
+    st.subheader("작업 단계별 상태 수집")
+    stage = st.selectbox("작업 단계", WORK_STAGE_NAMES)
+    label = st.text_input(
+        "사용자 지정 단계명", disabled=stage != CUSTOM_STAGE, max_chars=60
     )
-    for col, (key, value) in zip(st.columns(4), result["counts"].items()):
-        col.metric(f"{key} Changes", value)
-    filter_value = st.selectbox(
-        "결과 필터", ["All", "Expected", "Unexpected", "Warning", "Critical", "Unknown"]
-    )
-    rows = [
-        r
-        for r in result["rows"]
-        if filter_value == "All" or filter_value in (r["Classification"], r["Severity"])
-    ]
-    st.dataframe(
-        [{k: v for k, v in r.items() if k != "Difference"} for r in rows],
-        hide_index=True,
-        width="stretch",
-    )
-    with st.expander("Difference / 근거"):
-        for row in rows:
-            st.markdown(
-                f"**{row['Item']} · {row['Classification']} / {row['Severity']}**"
-            )
-            st.code(
-                row["Difference"] or "변경 없음 / 수집 상태는 결과 표 참조",
-                language="diff",
-            )
-    with st.expander("Raw Data / expected_changes"):
-        st.json(result["raw"])
-        st.json(result["expected_changes"])
-    st.download_button(
-        "HTML Report 다운로드", result["html"], "comware-demo.html", "text/html"
-    )
-    with st.expander("HTML Report Preview"):
+    vlan = resource = timeout = False
+    if stage == CUSTOM_STAGE:
         st.caption(
-            "수집 실패는 HTML에서도 Unknown으로 분리합니다. 확인 불가 필터에서 수집 오류 근거를 확인할 수 있습니다."
+            "합성 장비에 적용할 관측값입니다. 계획 변경 등록은 아래에서 별도로 지정합니다."
         )
-        st.iframe(result["html"], height=650)
-with st.expander("Architecture / How It Works"):
-    st.write(
-        "Fixture CLI → SnapshotStore (임시 디렉터리) → DiffEngine + expected_changes → 원 HTML ReportWriter"
-    )
+        vlan = st.checkbox("VLAN 20 / Description 변경 적용")
+        resource = st.checkbox("CPU 사용률 85% 적용")
+        timeout = st.checkbox("BB3 OSPF CLI 수집 실패")
     st.caption(
-        "Snapshot 임시 파일은 실행 직후 정리합니다. 결과는 각 브라우저 세션에서만 유지됩니다."
+        "백본3 OFF 중: BB3 응답 없음(Unknown), BB4에서 링크·LACP·OSPF·VRRP 변화 관측. 복구 후: 초기 CLI로 복귀."
     )
+    planned_off = st.checkbox("BB3 OFF 영향을 계획된 변경으로 등록")
+    planned_vlan = st.checkbox("VLAN / Description을 계획된 변경으로 등록")
+    if st.button("상태 수집 시작", type="primary", disabled=len(r.catalog) >= 20):
+        try:
+            r.capture(
+                stage,
+                label if stage == CUSTOM_STAGE else "",
+                planned_off=planned_off,
+                planned_vlan=planned_vlan,
+                vlan=vlan,
+                resource=resource,
+                timeout=timeout,
+            )
+        except ValueError as exc:
+            st.error(str(exc))
+    if r.catalog:
+        catalog = r.snapshot_rows()
+        st.dataframe(catalog, hide_index=True, width="stretch")
+        st.caption(
+            "자동 기준: "
+            + (
+                f"#{r.baseline + 1}"
+                if r.baseline is not None
+                else "없음 · 작업 전을 먼저 수집하세요."
+            )
+        )
+        fmt = lambda i: f"#{i + 1} {catalog[i]['Label']}"
+        base = st.selectbox(
+            "기준 Snapshot", range(len(catalog)), index=r.baseline or 0, format_func=fmt
+        )
+        target = st.selectbox(
+            "비교 Snapshot",
+            range(len(catalog)),
+            index=len(catalog) - 1,
+            format_func=fmt,
+        )
+        if st.button("선택 항목 비교"):
+            r.compare(base, target, planned_off, planned_vlan)
+with results:
+    st.subheader("변경 검증 결과")
+    if not r.summary:
+        st.info(
+            "작업 전 수집 후 후속 단계를 수집하거나 Snapshot 두 개를 선택해 비교하세요."
+        )
+    else:
+        st.caption(
+            f"분석 Snapshot #{r.pair[0] + 1} → #{r.pair[1] + 1} · 계획 등록: BB3 OFF={r.options[0]}, VLAN={r.options[1]}"
+        )
+        if r.options != (planned_off, planned_vlan):
+            st.warning(
+                "계획 변경 설정이 바뀌었습니다. 선택 항목 비교를 눌러 재분석하세요."
+            )
+        labels = [
+            "Critical",
+            "Warning",
+            "Expected",
+            "Unexpected",
+            "Unknown",
+            "Unchanged",
+        ]
+        counts = {
+            k: sum(
+                row["Severity" if k in ("Critical", "Warning") else "Classification"]
+                == k
+                for row in r.rows
+            )
+            for k in labels
+        }
+        st.write(
+            "Validation Status: "
+            + ("확인 불가 포함" if counts["Unknown"] else "관측 완료")
+        )
+        for col, name in zip(st.columns(6), labels):
+            col.metric(name, counts[name])
+        st.caption(
+            "Expected는 계획 일치 여부입니다. Critical / Warning 등급은 그대로 유지됩니다."
+        )
+        selected = st.selectbox("결과 Filter", ["전체", "문제"] + labels)
+        search = st.text_input("Device / Command / Finding 검색")
+        rows = [
+            row
+            for row in r.rows
+            if (
+                selected == "전체"
+                or (
+                    selected == "문제"
+                    and (
+                        row["Severity"] in ("Critical", "Warning", "Unknown")
+                        or row["Classification"] == "Unexpected"
+                    )
+                )
+                or selected in (row["Severity"], row["Classification"])
+            )
+            and search.lower() in str(row).lower()
+        ]
+        st.dataframe(
+            [{k: v for k, v in row.items() if k != "Index"} for row in rows],
+            hide_index=True,
+            width="stretch",
+        )
+        if rows:
+            detail = st.selectbox(
+                "변경 상세",
+                range(len(rows)),
+                format_func=lambda i: rows[i]["Device"] + " / " + rows[i]["Command"],
+            )
+            row = rows[detail]
+            item = r.summary.items[row["Index"]]
+            st.write(item.finding_title or item.summary)
+            st.write("영향: " + item.impact_reason)
+            st.write("Evidence: " + item.evidence)
+            st.write("권장 조치: " + item.action_hint)
+            st.dataframe([asdict(line) for line in item.changed_lines], hide_index=True)
+            before, after = st.columns(2)
+            before.code(row["Before"], language="text")
+            after.code(row["After"], language="text")
+with reports:
+    st.subheader("HTML / Share ZIP")
+    if r.html:
+        st.download_button("HTML Download", r.html, "comware-demo-v2.html", "text/html")
+        st.download_button(
+            "Share ZIP Download", r.zip_bytes, "comware-demo-v2.zip", "application/zip"
+        )
+        if st.checkbox("HTML Preview"):
+            components.html(r.html, height=650, scrolling=True)
+    else:
+        st.info("비교 실행 후 보고서를 생성합니다.")
+with logs:
+    st.dataframe(r.logs, hide_index=True, width="stretch")
 st.link_button(
-    "GitHub Source", "https://github.com/sebia1993/hpe-comware-change-validator"
+    "원본 프로젝트", "https://github.com/sebia1993/hpe-comware-change-validator"
 )
