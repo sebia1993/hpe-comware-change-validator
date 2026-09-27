@@ -63,6 +63,7 @@ def _common_entries() -> dict[str, str]:
         "backbone_state_tracker/docs/CHANGE_VALIDATION_LOGIC.md": "change validation logic",
         "backbone_state_tracker/docs/VALIDATION_REPORT.md": "validation report",
         "backbone_state_tracker/docs/PORTFOLIO_REVIEW_KO.md": "portfolio review",
+        "backbone_state_tracker/docs/PUBLIC_DEMO_V2_PLAN_KO.md": "public demo v2 plan",
         "backbone_state_tracker/docs/USAGE_SCREENSHOTS_KO.md": "usage screenshots",
         "backbone_state_tracker/docs/USER_GUIDE.md": "user md",
         "backbone_state_tracker/docs/USER_GUIDE.html": "user html",
