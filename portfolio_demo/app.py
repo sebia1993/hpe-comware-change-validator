@@ -60,15 +60,18 @@ with workspace:
     planned_off = st.checkbox("BB3 OFF 영향을 계획된 변경으로 등록")
     planned_vlan = st.checkbox("VLAN / Description을 계획된 변경으로 등록")
     if st.button("상태 수집 시작", type="primary", disabled=len(r.catalog) >= 20):
-        r.capture(
-            stage,
-            label if stage == CUSTOM_STAGE else "",
-            planned_off=planned_off,
-            planned_vlan=planned_vlan,
-            vlan=vlan,
-            resource=resource,
-            timeout=timeout,
-        )
+        try:
+            r.capture(
+                stage,
+                label if stage == CUSTOM_STAGE else "",
+                planned_off=planned_off,
+                planned_vlan=planned_vlan,
+                vlan=vlan,
+                resource=resource,
+                timeout=timeout,
+            )
+        except ValueError as exc:
+            st.error(str(exc))
     if r.catalog:
         catalog = r.snapshot_rows()
         st.dataframe(catalog, hide_index=True, width="stretch")
