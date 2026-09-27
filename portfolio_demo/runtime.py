@@ -197,10 +197,16 @@ class DemoRuntime:
             for snap in (bs, ts)
         ]
         for i, item in enumerate(items):
-            if item.command_id not in DATA_COMMAND_IDS:
-                continue
             raw = []
             for path, records in zip((bp, tp), lookup):
+                if item.command_id not in DATA_COMMAND_IDS:
+                    device_results = [
+                        r for r in records.values() if r.device_name == item.device_name
+                    ]
+                    raw.append(
+                        f"Snapshot metadata: {sum(r.success for r in device_results)}/{len(device_results)} CLI 수집 성공"
+                    )
+                    continue
                 record = records.get((item.device_name, item.command_id))
                 raw.append(
                     (path / record.raw_file).read_text(encoding="utf-8")
@@ -266,7 +272,7 @@ class DemoRuntime:
             )
             html = html.replace(
                 "예상되지 않은 긴급/주의 문제가 없습니다.",
-                "수집 성공 항목에서 긴급/주의가 확인되지 않았습니다. 실패 항목은 확인 불가입니다.",
+                "수집 성공 항목에서 예상되지 않은 긴급/주의가 확인되지 않았습니다. 계획된 변경의 등급은 아래에서 확인하세요. 실패 항목은 확인 불가입니다.",
             )
         for value, replacement in (
             (str(bp), f"Snapshot {self.pair[0] + 1}"),

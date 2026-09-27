@@ -29,7 +29,7 @@ class DemoTests(unittest.TestCase):
                 )
             )
             self.assertTrue(any(x["Severity"] == "Warning" for x in r.rows))
-            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 10)
+            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 11)
             r.compare(0, 1, planned_off=True)
             self.assertTrue(
                 any(
@@ -38,6 +38,11 @@ class DemoTests(unittest.TestCase):
                 )
             )
             self.assertNotIn(str(r.root), r.html)
+            self.assertIn("예상되지 않은 긴급/주의", r.html)
+            self.assertEqual(
+                sum(x["Severity"] == "Unknown" for x in r.rows),
+                sum(i.severity == "Unknown" for i in r.summary.items),
+            )
             self.assertIn('data-filter="Unknown"', r.html)
             with ZipFile(io.BytesIO(r.zip_bytes)) as archive:
                 self.assertIsNone(archive.testzip())
@@ -49,7 +54,7 @@ class DemoTests(unittest.TestCase):
             self.assertEqual(r.pair, (0, 2))
             self.assertTrue(all(x["Classification"] == "Unchanged" for x in r.rows))
             r.compare(1, 2)
-            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 10)
+            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 11)
             r.capture(
                 "사용자 지정", "VLAN rollout", vlan=True, resource=True, timeout=True
             )
