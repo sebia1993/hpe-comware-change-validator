@@ -345,7 +345,9 @@ class ScenarioTests(unittest.TestCase):
         metrics = {m.label: m.value for m in app.metric}
         self.assertEqual(metrics["작업 계획과 일치"], str(counts(r)["Expected"]))
         self.assertEqual(metrics["추가 확인 필요"], str(counts(r)["Unexpected"]))
-        self.assertTrue(any("Scenario Timeline" in m.value for m in app.markdown))
+        self.assertTrue(
+            any("Scenario Timeline" in m.proto.body for m in app.get("html"))
+        )
         self.assertTrue(any("Execution Trace" in m.value for m in app.markdown))
         self.assertTrue(any("처리 자원" in m.value for m in app.markdown))
         self.assertTrue(r.html and r.zip_bytes)
@@ -394,3 +396,29 @@ class ScenarioTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GuidedFlowTests(unittest.TestCase):
+    def test_navigation_keeps_execution_identity_and_results_on_rerun(self):
+        app = AppTest.from_file(str(Path(__file__).with_name("app.py"))).run()
+        next(
+            b for b in app.button if b.label == "▶ 대표 네트워크 작업 검증 보기"
+        ).click().run()
+        self.assertFalse(app.exception)
+        token = app.session_state.guided_run_id
+        runner = app.session_state.scenario_runner
+        runtime = app.session_state.runtime
+        html = next(
+            h.proto.body for h in app.get("html") if 'id="guided-flow"' in h.proto.body
+        )
+        self.assertIn('data-phase="result"', html)
+        self.assertIn('aria-label="실행 단계 선택"', html)
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertEqual(token, app.session_state.guided_run_id)
+        self.assertIs(runner, app.session_state.scenario_runner)
+        self.assertIs(runtime, app.session_state.runtime)
+        next(
+            b for b in app.button if b.label == "▶ 대표 네트워크 작업 검증 보기"
+        ).click().run()
+        self.assertNotEqual(token, app.session_state.guided_run_id)

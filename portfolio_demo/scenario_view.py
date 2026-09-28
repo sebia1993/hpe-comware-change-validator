@@ -37,13 +37,13 @@ def render_result(runtime, st):
         return
     st.markdown("### 이번 작업 검증 결과")
     values = counts(runtime)
-    for col, (key, label) in zip(st.columns(4), LABELS.items()):
-        col.metric(label, values[key])
     message = conclusion(runtime)
     if values["Unknown"] or values["Unexpected"]:
         st.warning(message)
     else:
         st.success(message)
+    for col, (key, label) in zip(st.columns(4), LABELS.items()):
+        col.metric(label, values[key])
     planned_risks = sum(
         row["Classification"] == "Expected"
         and row["Severity"] in ("Critical", "Warning")

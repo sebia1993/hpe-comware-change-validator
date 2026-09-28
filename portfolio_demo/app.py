@@ -14,6 +14,7 @@ from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 
 from portfolio_demo.execution_trace import render_trace
+from portfolio_demo.guided_flow import GuidedSlot, begin
 from portfolio_demo.scenario_runner import SCENARIOS, ScenarioRunner
 from portfolio_demo.scenario_view import (
     render_timeline,
@@ -657,6 +658,7 @@ def render_logs_page() -> None:
 
 def start_scenario(key):
     global r
+    begin()
     old = r
     runner = ScenarioRunner()
     st.session_state.scenario_runner = runner
@@ -682,10 +684,14 @@ st.caption(
     "HPE Comware Change Validator · Public Web Edition · 비식별 합성 데이터 · 실제 장비 변경 없음"
 )
 controls = st.container()
-timeline_slot = st.empty()
+timeline_slot = GuidedSlot(
+    st.empty(), lambda: getattr(st.session_state.get("scenario_runner"), "run", None)
+)
 result_slot = st.container()
-public_trace_slot = st.empty()
-findings_slot = st.container()
+with st.expander("실제 처리 기록 / Execution Trace", expanded=False):
+    public_trace_slot = st.empty()
+with st.expander("판단 근거 / 주요 확인 항목", expanded=False):
+    findings_slot = st.container()
 with controls:
     chosen = None
     if st.button(
