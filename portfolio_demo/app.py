@@ -18,6 +18,7 @@ from portfolio_demo.guided_flow import GuidedSlot, begin
 from portfolio_demo.scenario_runner import SCENARIOS, ScenarioRunner, business_finding
 from portfolio_demo.scenario_view import (
     render_timeline,
+    render_run_status,
     render_result,
     render_business_trace,
     render_findings,
@@ -283,6 +284,7 @@ def render_sidebar() -> None:
         st.caption("v0.9.0 · 실제 SSH 대신 합성 CLI만 사용")
         if st.button("Demo Reset", use_container_width=True):
             st.session_state.pop("scenario_runner", None)
+            st.session_state.pop("scenario_autorun", None)
             r.close()
             st.session_state.runtime = DemoRuntime()
             st.session_state.comware_page = "장비 설정"
@@ -350,6 +352,7 @@ def capture_snapshot(
     planned_vlan: bool,
 ) -> None:
     st.session_state.pop("scenario_runner", None)
+    st.session_state.pop("scenario_autorun", None)
     try:
         r.capture(
             stage,
@@ -376,6 +379,7 @@ def render_collection_section() -> None:
         )
         if cols[2].button("설정 점검", use_container_width=True):
             st.session_state.pop("scenario_runner", None)
+    st.session_state.pop("scenario_autorun", None)
             r.check()
             st.rerun()
 
@@ -473,6 +477,7 @@ def classification_metrics() -> dict[str, int]:
 
 def run_sample_validation() -> None:
     st.session_state.pop("scenario_runner", None)
+    st.session_state.pop("scenario_autorun", None)
     demo = DemoRuntime()
     demo.execution.on_change = lambda: render_trace(demo.execution, trace_slot)
     with demo.execution.operation("작업 전 저장 → 작업 후 저장 → 자동 비교"):
@@ -541,6 +546,7 @@ def render_compare_controls() -> tuple[bool, bool]:
         ):
             try:
                 st.session_state.pop("scenario_runner", None)
+    st.session_state.pop("scenario_autorun", None)
                 r.compare(base, target, planned_off, planned_vlan)
                 st.rerun()
             except ValueError as exc:
@@ -721,16 +727,9 @@ def start_scenario(key):
     begin()
     old = r
     runner = ScenarioRunner()
+    runner.start(key)
     st.session_state.scenario_runner = runner
-
-    def update(current):
-        render_timeline(current, timeline_slot)
-        render_business_trace(current.runtime, public_trace_slot)
-
-    try:
-        runner.play(key, update)
-    except Exception as exc:
-        st.error(f"검증을 완료하지 못했습니다: {exc}")
+    st.session_state.scenario_autorun = True
     r = runner.runtime
     st.session_state.runtime = r
     old.close()
@@ -770,6 +769,7 @@ with controls:
         start_scenario(chosen)
 
 runner = st.session_state.get("scenario_runner")
+render_run_status(runner, st)
 render_timeline(runner, timeline_slot)
 with result_slot:
     render_result(r, st)
@@ -813,3 +813,18 @@ st.link_button(
     "GitHub Source", "https://github.com/sebia1993/hpe-comware-change-validator"
 )
 r.execution.on_change = None
+
+if st.session_state.get("scenario_autorun"):
+    active = st.session_state.get("scenario_runner")
+    if active and active.run and not active.run.completed and not active.run.error:
+        try:
+            active.advance()
+        except Exception as exc:
+            st.session_state.scenario_autorun = False
+            st.error(f"검증을 완료하지 못했습니다: {exc}")
+        st.session_state.runtime = active.runtime
+        if active.run.completed or active.run.error:
+            st.session_state.scenario_autorun = False
+        st.rerun()
+    else:
+        st.session_state.scenario_autorun = False
