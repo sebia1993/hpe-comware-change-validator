@@ -2,7 +2,9 @@
 
 **[Live Demo · 브라우저에서 실행](https://sebia1993-comware-validator-demo.streamlit.app/)** · [실행·검증 안내](portfolio_demo/README.md) · [GitHub Source](https://github.com/sebia1993/hpe-comware-change-validator)
 
-장비 없이 합성 시나리오를 선택하고 기존 Python 분석 결과와 Raw 근거를 확인할 수 있습니다.
+> **30초 요약:** 네트워크 작업 전 상태를 기준 Snapshot으로 저장하고 작업 후 결과와 자동 비교해 **계획된 변화 / 비계획 변화 / 위험 신호 / 확인 불가**를 구분하는 변경 검증 도구입니다.
+
+Live Demo에서는 **샘플 변경 검증 1-click**으로 Pre-Change → 작업 중 Snapshot → 자동 Diff까지 즉시 확인할 수 있습니다. 공개 환경에서는 합성 CLI만 사용하지만 SnapshotStore, DiffEngine, ExpectedChangeRule과 ReportWriter는 production 코드를 재사용합니다.
 
 [![Windows 검증](https://github.com/sebia1993/hpe-comware-change-validator/actions/workflows/pr-build.yml/badge.svg?branch=main)](https://github.com/sebia1993/hpe-comware-change-validator/actions/workflows/pr-build.yml)
 
