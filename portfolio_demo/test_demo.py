@@ -335,6 +335,15 @@ class ScenarioTests(unittest.TestCase):
         app = AppTest.from_file(str(Path(__file__).with_name("app.py"))).run()
         self.assertFalse(app.exception)
         self.assertFalse(app.sidebar.button)
+        self.assertTrue(
+            any("프로젝트 목적" in markdown.value for markdown in app.markdown)
+        )
+        self.assertTrue(
+            any(
+                "이 데모에서 보여주는 것" in markdown.value
+                for markdown in app.markdown
+            )
+        )
         next(
             b for b in app.button if b.label == "▶ 대표 네트워크 작업 검증 보기"
         ).click().run()
@@ -345,6 +354,20 @@ class ScenarioTests(unittest.TestCase):
         metrics = {m.label: m.value for m in app.metric}
         self.assertEqual(metrics["작업 계획과 일치"], str(counts(r)["Expected"]))
         self.assertEqual(metrics["추가 확인 필요"], str(counts(r)["Unexpected"]))
+        self.assertTrue(
+            any("가장 먼저 확인할 결과" in markdown.value for markdown in app.markdown)
+        )
+        self.assertTrue(
+            any(
+                phrase in markdown.value
+                for markdown in app.markdown
+                for phrase in (
+                    "계획에 없던 변화",
+                    "수집하지 못해",
+                    "등록된 작업 계획과 일치",
+                )
+            )
+        )
         self.assertTrue(
             any("Scenario Timeline" in m.proto.body for m in app.get("html"))
         )
