@@ -43,6 +43,7 @@ class DemoRuntime:
         self.zip_bytes = b""
         self.options = (False, False)
         self.preflight = None
+        self.pending_compare = None
 
     def close(self):
         self.temp.cleanup()
@@ -83,14 +84,25 @@ class DemoRuntime:
 
     @traced("상태 수집 및 비교")
     def capture(
-        self, stage, label="", *, planned_off=False, planned_vlan=False, **inputs
+        self,
+        stage,
+        label="",
+        *,
+        planned_off=False,
+        planned_vlan=False,
+        check_preflight=True,
+        auto_compare=True,
+        **inputs,
     ):
         if stage not in WORK_STAGE_NAMES:
             raise ValueError("Unknown stage")
         if len(self.catalog) >= 20:
             raise ValueError("Snapshot 한도 20개입니다. Reset 후 다시 시작하세요.")
-        if self.check().has_errors:
-            raise ValueError("Preflight failed")
+        if check_preflight:
+            if self.check().has_errors:
+                raise ValueError("Preflight failed")
+        elif self.preflight is None or self.preflight.has_errors:
+            raise ValueError("Preflight must succeed before collection")
         if stage == "사용자 지정" and label.strip() in WORK_STAGE_NAMES:
             raise ValueError("사용자 지정 단계명은 기본 단계명과 달라야 합니다.")
         resolved = resolve_stage(stage, label.strip()[:60] or stage)
@@ -136,8 +148,9 @@ class DemoRuntime:
             self.log("Baseline Selected", f"#{self.baseline + 1}")
         # A fresh baseline must not leave a stale comparison on screen.
         self.summary = None
+        self.pending_compare = None
         self.rows, self.html, self.zip_bytes, self.pair = [], "", b"", None
-        if stage != PRE_WORK_STAGE and self.baseline is not None:
+        if auto_compare and stage != PRE_WORK_STAGE and self.baseline is not None:
             self.compare(self.baseline, idx, planned_off, planned_vlan, automatic=True)
         return idx
 
@@ -159,8 +172,7 @@ class DemoRuntime:
             )
         return rows
 
-    @traced("Snapshot 비교")
-    def compare(
+    def prepare_comparison(
         self, base, target, planned_off=False, planned_vlan=False, *, automatic=False
     ):
         if not (0 <= base < len(self.catalog) and 0 <= target < len(self.catalog)):
@@ -195,24 +207,57 @@ class DemoRuntime:
         )
         with self.execution.step("diff", "DiffEngine / ExpectedChangeRule") as step:
             summary = DiffEngine(config).compare(bp, tp)
-            step.detail = f"Snapshot #{base + 1} → #{target + 1} · {len(summary.items)}개 분석 항목 · 계획 규칙 {len(rules)}개"
+            step.detail = (
+                f"Snapshot #{base + 1} → #{target + 1} · "
+                f"{len(summary.items)}개 분석 항목 · 계획 규칙 {len(rules)}개"
+            )
             step.evidence = {
                 "base": base + 1,
                 "target": target + 1,
                 "items": len(summary.items),
                 "rules": len(rules),
             }
+        self.pending_compare = {
+            "base": base,
+            "target": target,
+            "bp": bp,
+            "tp": tp,
+            "bs": bs,
+            "ts": ts,
+            "summary": summary,
+            "planned_off": planned_off,
+            "planned_vlan": planned_vlan,
+            "automatic": automatic,
+        }
+        return summary
+
+    def classify_pending_comparison(self):
+        if self.pending_compare is None:
+            raise ValueError("No prepared comparison")
+        context = self.pending_compare
+        base = context["base"]
+        target = context["target"]
+        bp, tp = context["bp"], context["tp"]
+        bs, ts = context["bs"], context["ts"]
+        planned_off = context["planned_off"]
+        planned_vlan = context["planned_vlan"]
+        summary = context["summary"]
+
         failed = {
-            (r.device_name, r.command_id)
+            (result.device_name, result.command_id)
             for snap in (bs, ts)
-            for r in snap.results
-            if not r.success
+            for result in snap.results
+            if not result.success
         }
         unavailable_devices = {
-            d.name
-            for d in DEVICES
+            device.name
+            for device in DEVICES
             if any(
-                all(not r.success for r in snap.results if r.device_name == d.name)
+                all(
+                    not result.success
+                    for result in snap.results
+                    if result.device_name == device.name
+                )
                 for snap in (bs, ts)
             )
         }
@@ -238,22 +283,27 @@ class DemoRuntime:
                     change_preview="비교 불가",
                 )
             items.append(item)
+
         self.summary = replace(summary, items=items)
         self.pair, self.options = (base, target), (planned_off, planned_vlan)
         self.rows = []
         lookup = [
-            {(r.device_name, r.command_id): r for r in snap.results}
+            {(result.device_name, result.command_id): result for result in snap.results}
             for snap in (bs, ts)
         ]
-        for i, item in enumerate(items):
+        for index, item in enumerate(items):
             raw = []
-            for path, records in zip((bp, tp), lookup):
+            for path, records in zip((bp, tp), lookup, strict=True):
                 if item.command_id not in DATA_COMMAND_IDS:
                     device_results = [
-                        r for r in records.values() if r.device_name == item.device_name
+                        result
+                        for result in records.values()
+                        if result.device_name == item.device_name
                     ]
                     raw.append(
-                        f"Snapshot metadata: {sum(r.success for r in device_results)}/{len(device_results)} CLI 수집 성공"
+                        "Snapshot metadata: "
+                        f"{sum(result.success for result in device_results)}/"
+                        f"{len(device_results)} CLI 수집 성공"
                     )
                     continue
                 record = records.get((item.device_name, item.command_id))
@@ -267,7 +317,8 @@ class DemoRuntime:
                 if item.severity == "Unknown"
                 else (
                     "Unchanged"
-                    if raw[0] == raw[1] and item.severity not in ("Critical", "Warning")
+                    if raw[0] == raw[1]
+                    and item.severity not in ("Critical", "Warning")
                     else (
                         "Expected" if item.expectation == "expected" else "Unexpected"
                     )
@@ -275,7 +326,7 @@ class DemoRuntime:
             )
             self.rows.append(
                 {
-                    "Index": i,
+                    "Index": index,
                     "Device": item.device_name,
                     "Command": item.command_id,
                     "Category": item.category,
@@ -287,6 +338,7 @@ class DemoRuntime:
                     "Changes": item.change_count,
                 }
             )
+
         counts = {
             key: sum(row["Classification"] == key for row in self.rows)
             for key in ("Unchanged", "Expected", "Unexpected", "Unknown")
@@ -301,17 +353,41 @@ class DemoRuntime:
             "warning"
             if counts["Unknown"] or severities["Critical"] or severities["Warning"]
             else "success",
-            f"비교 {len(self.rows)}항목 · 변경 {counts['Expected'] + counts['Unexpected']} · 변경 분류: "
+            f"비교 {len(self.rows)}항목 · 변경 "
+            f"{counts['Expected'] + counts['Unexpected']} · 변경 분류: "
             + " · ".join(f"{key} {value}" for key, value in counts.items())
             + " · 위험도: "
             + " · ".join(f"{key} {value}" for key, value in severities.items()),
             {"items": len(self.rows), "classification": counts, "severity": severities},
         )
         self.log(
-            "Auto Compare" if automatic else "Manual Compare",
+            "Auto Compare" if context["automatic"] else "Manual Compare",
             f"#{base + 1} → #{target + 1}",
         )
-        self.make_report(bp, tp)
+        return self.rows
+
+    def report_pending_comparison(self):
+        if self.pending_compare is None or self.summary is None or self.pair is None:
+            raise ValueError("No classified comparison")
+        self.make_report(
+            self.pending_compare["bp"],
+            self.pending_compare["tp"],
+        )
+        return self.html
+
+    @traced("Snapshot 비교")
+    def compare(
+        self, base, target, planned_off=False, planned_vlan=False, *, automatic=False
+    ):
+        self.prepare_comparison(
+            base,
+            target,
+            planned_off,
+            planned_vlan,
+            automatic=automatic,
+        )
+        self.classify_pending_comparison()
+        self.report_pending_comparison()
         return self.rows
 
     def make_report(self, bp, tp):
