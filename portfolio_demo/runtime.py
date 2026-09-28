@@ -24,8 +24,12 @@ from core.workflow import (
 from portfolio_demo.fixture_collector import DEVICES, COMMANDS, collect
 
 
+from portfolio_demo.execution_trace import ExecutionTrace, traced
+
+
 class DemoRuntime:
     def __init__(self):
+        self.execution = ExecutionTrace()
         self.temp = TemporaryDirectory(prefix="comware-demo-v2-")
         self.root = Path(self.temp.name)
         self.store = SnapshotStore(self.root / "snapshots")
@@ -53,14 +57,31 @@ class DemoRuntime:
         )
         self.logs = self.logs[-200:]
 
+    @traced("설정 점검")
     def check(self):
-        self.preflight = validate_preflight(DEVICES, COMMANDS)
+        with self.execution.step(
+            "preflight", "Preflight · 읽기 전용 명령 검증"
+        ) as step:
+            self.preflight = validate_preflight(DEVICES, COMMANDS)
+            step.status = (
+                "failure"
+                if self.preflight.has_errors
+                else ("warning" if self.preflight.warning_count else "success")
+            )
+            step.detail = f"대상 {len(DEVICES)}대 · 명령 {len(COMMANDS)}종 · Error {self.preflight.error_count} / Warning {self.preflight.warning_count}"
+            step.evidence = {
+                "devices": len(DEVICES),
+                "commands": len(COMMANDS),
+                "errors": self.preflight.error_count,
+                "warnings": self.preflight.warning_count,
+            }
         self.log(
             "Preflight",
             f"Errors={self.preflight.error_count}, Warnings={self.preflight.warning_count}",
         )
         return self.preflight
 
+    @traced("상태 수집 및 비교")
     def capture(
         self, stage, label="", *, planned_off=False, planned_vlan=False, **inputs
     ):
@@ -76,17 +97,36 @@ class DemoRuntime:
         if stage == "사용자 지정":
             resolved = replace(resolved, slug="custom_" + resolved.slug)
         self.log("Collect Started", resolved.name)
-        batches = collect(stage, **inputs)
-        failed = sum(not r.success for batch in batches.values() for r in batch)
-        path = self.store.write_snapshot(
-            resolved.name,
-            DEVICES,
-            batches,
-            stage_name=resolved.name,
-            stage_slug=resolved.slug,
-        )
-        self.catalog.append(path)
-        idx = len(self.catalog) - 1
+        with self.execution.step("collect", "작업 상태 수집", resolved.name) as step:
+            batches = collect(stage, **inputs)
+            failed = sum(not r.success for batch in batches.values() for r in batch)
+            total = sum(len(batch) for batch in batches.values())
+            step.status = "warning" if failed else "success"
+            step.detail = f"{resolved.name} · 대상 {len(batches)}대 · CLI 성공 {total - failed}/{total} · 확인 불가 {failed}"
+            step.evidence = {"devices": len(batches), "total": total, "failed": failed}
+        with self.execution.step(
+            "snapshot",
+            "작업 전 상태 저장" if stage == PRE_WORK_STAGE else "작업 후 상태 저장",
+        ) as step:
+            path = self.store.write_snapshot(
+                resolved.name,
+                DEVICES,
+                batches,
+                stage_name=resolved.name,
+                stage_slug=resolved.slug,
+            )
+            self.catalog.append(path)
+            idx = len(self.catalog) - 1
+            step.status = "warning" if failed else "success"
+            step.detail = (
+                f"Snapshot #{idx + 1} · {resolved.name} · 저장 {len(self.catalog)}개"
+                + (" · 수집 실패 포함, 정상 판정 보류" if failed else "")
+            )
+            step.evidence = {
+                "snapshot_id": idx + 1,
+                "snapshot_count": len(self.catalog),
+                "failed": failed,
+            }
         self.log("Snapshot Saved", f"#{idx + 1} {resolved.name}")
         if failed:
             self.log("Collection Error", f"{failed} CLI results unavailable; Unknown")
@@ -119,6 +159,7 @@ class DemoRuntime:
             )
         return rows
 
+    @traced("Snapshot 비교")
     def compare(
         self, base, target, planned_off=False, planned_vlan=False, *, automatic=False
     ):
@@ -152,7 +193,15 @@ class DemoRuntime:
             load_analysis_rules(ROOT / "config/analysis_rules.yaml"),
             expected_changes=tuple(rules),
         )
-        summary = DiffEngine(config).compare(bp, tp)
+        with self.execution.step("diff", "DiffEngine / ExpectedChangeRule") as step:
+            summary = DiffEngine(config).compare(bp, tp)
+            step.detail = f"Snapshot #{base + 1} → #{target + 1} · {len(summary.items)}개 분석 항목 · 계획 규칙 {len(rules)}개"
+            step.evidence = {
+                "base": base + 1,
+                "target": target + 1,
+                "items": len(summary.items),
+                "rules": len(rules),
+            }
         failed = {
             (r.device_name, r.command_id)
             for snap in (bs, ts)
@@ -238,6 +287,26 @@ class DemoRuntime:
                     "Changes": item.change_count,
                 }
             )
+        counts = {
+            key: sum(row["Classification"] == key for row in self.rows)
+            for key in ("Unchanged", "Expected", "Unexpected", "Unknown")
+        }
+        severities = {
+            key: sum(item.severity == key for item in self.summary.items)
+            for key in ("Critical", "Warning", "Info", "Unknown")
+        }
+        self.execution.record(
+            "classification",
+            "변경 및 위험도 판정",
+            "warning"
+            if counts["Unknown"] or severities["Critical"] or severities["Warning"]
+            else "success",
+            f"비교 {len(self.rows)}항목 · 변경 {counts['Expected'] + counts['Unexpected']} · 변경 분류: "
+            + " · ".join(f"{key} {value}" for key, value in counts.items())
+            + " · 위험도: "
+            + " · ".join(f"{key} {value}" for key, value in severities.items()),
+            {"items": len(self.rows), "classification": counts, "severity": severities},
+        )
         self.log(
             "Auto Compare" if automatic else "Manual Compare",
             f"#{base + 1} → #{target + 1}",
@@ -246,50 +315,58 @@ class DemoRuntime:
         return self.rows
 
     def make_report(self, bp, tp):
-        report_dir = self.root / "comparison"
-        report_dir.mkdir(exist_ok=True)
-        report = report_dir / "diff_report.html"
-        ReportWriter._write_html(report, self.summary)
-        html = report.read_text(encoding="utf-8")
-        unknown = sum(i.severity == "Unknown" for i in self.summary.items)
-        if unknown:
-            html = html.replace(
-                '<div class="wrap">',
-                '<div class="wrap"><section class="problem-summary"><h2>Unknown / Collection Error</h2><p>수집 실패 항목은 정상이나 장애로 판단하지 않습니다.</p></section>',
-                1,
-            )
-            html = html.replace(
-                '<section class="counts" aria-label="등급 필터">',
-                '<section class="counts" aria-label="등급 필터"><button class="count" type="button" data-filter="Unknown"><span class="count-label">확인 불가</span><strong>'
-                + str(unknown)
-                + "</strong></button>",
-                1,
-            )
-            html = html.replace(
-                "const filterLabels = {",
-                'const filterLabels = {"Unknown":"확인 불가",',
-                1,
-            )
-            html = html.replace(
-                "예상되지 않은 긴급/주의 문제가 없습니다.",
-                "수집 성공 항목에서 예상되지 않은 긴급/주의가 확인되지 않았습니다. 계획된 변경의 등급은 아래에서 확인하세요. 실패 항목은 확인 불가입니다.",
-            )
-        for value, replacement in (
-            (str(bp), f"Snapshot {self.pair[0] + 1}"),
-            (str(tp), f"Snapshot {self.pair[1] + 1}"),
-            (str(self.root), "Demo workspace"),
-        ):
-            html = html.replace(escape(value), replacement).replace(value, replacement)
-        self.html = html
-        report.write_text(html, encoding="utf-8")
-        docs = self.root / "empty-docs"
-        docs.mkdir(exist_ok=True)
-        # Bound report storage across repeated reclassifications.
-        for old in report_dir.glob("*.zip"):
-            old.unlink()
-        bundle = create_share_report_bundle(report_dir, docs_dir=docs)
-        self.zip_bytes = bundle.read_bytes()
-        self.log("Report Generated", "HTML / Share ZIP")
+        with self.execution.step("report", "ReportWriter · HTML / Share ZIP") as step:
+            report_dir = self.root / "comparison"
+            report_dir.mkdir(exist_ok=True)
+            report = report_dir / "diff_report.html"
+            ReportWriter._write_html(report, self.summary)
+            html = report.read_text(encoding="utf-8")
+            unknown = sum(i.severity == "Unknown" for i in self.summary.items)
+            if unknown:
+                html = html.replace(
+                    '<div class="wrap">',
+                    '<div class="wrap"><section class="problem-summary"><h2>Unknown / Collection Error</h2><p>수집 실패 항목은 정상이나 장애로 판단하지 않습니다.</p></section>',
+                    1,
+                )
+                html = html.replace(
+                    '<section class="counts" aria-label="등급 필터">',
+                    '<section class="counts" aria-label="등급 필터"><button class="count" type="button" data-filter="Unknown"><span class="count-label">확인 불가</span><strong>'
+                    + str(unknown)
+                    + "</strong></button>",
+                    1,
+                )
+                html = html.replace(
+                    "const filterLabels = {",
+                    'const filterLabels = {"Unknown":"확인 불가",',
+                    1,
+                )
+                html = html.replace(
+                    "예상되지 않은 긴급/주의 문제가 없습니다.",
+                    "수집 성공 항목에서 예상되지 않은 긴급/주의가 확인되지 않았습니다. 계획된 변경의 등급은 아래에서 확인하세요. 실패 항목은 확인 불가입니다.",
+                )
+            for value, replacement in (
+                (str(bp), f"Snapshot {self.pair[0] + 1}"),
+                (str(tp), f"Snapshot {self.pair[1] + 1}"),
+                (str(self.root), "Demo workspace"),
+            ):
+                html = html.replace(escape(value), replacement).replace(
+                    value, replacement
+                )
+            self.html = html
+            report.write_text(html, encoding="utf-8")
+            docs = self.root / "empty-docs"
+            docs.mkdir(exist_ok=True)
+            # Bound report storage across repeated reclassifications.
+            for old in report_dir.glob("*.zip"):
+                old.unlink()
+            bundle = create_share_report_bundle(report_dir, docs_dir=docs)
+            self.zip_bytes = bundle.read_bytes()
+            self.log("Report Generated", "HTML / Share ZIP")
+            step.detail = f"HTML {len(self.html.encode('utf-8'))} bytes · Share ZIP {len(self.zip_bytes)} bytes 생성"
+            step.evidence = {
+                "html_bytes": len(self.html.encode("utf-8")),
+                "zip_bytes": len(self.zip_bytes),
+            }
 
 
 DATA_COMMAND_IDS = {c.id for c in COMMANDS}

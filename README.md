@@ -264,3 +264,5 @@ python .\tools\verify_release_assets.py --zip <ZIP경로> --checksum <SHA파일>
 - 화면 자료와 자동 검증 결과는 합성/Mock/CI 근거이며 실제 운영 장비 검증이나 현장 성과 수치를 뜻하지 않습니다.
 
 MIT License로 공개합니다. 자세한 조건은 [LICENSE](LICENSE)를 확인하십시오.
+
+Public Web Edition은 실제 수집·분석 호출의 실행 과정과 결과값을 Execution Trace로 남깁니다. 시간은 실제 호출 기준이며, 개별 측정이 없는 결과 단계는 시간을 표시하지 않습니다.

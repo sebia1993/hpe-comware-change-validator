@@ -13,6 +13,8 @@ from core.workflow import CUSTOM_STAGE, WORK_STAGE_NAMES
 from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 
+from portfolio_demo.execution_trace import render_trace
+
 st.set_page_config(
     page_title="백본 상태 추적 콘솔 · Public Web Edition",
     page_icon="🔎",
@@ -343,9 +345,15 @@ def render_command_section() -> None:
 
 
 def render_settings_page() -> None:
-    render_access_section()
-    render_devices_section()
-    render_collection_section()
+    global trace_slot
+    controls_area = st.container()
+    trace_slot = st.empty()
+    r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
+    render_trace(r.execution, trace_slot)
+    with controls_area:
+        render_access_section()
+        render_devices_section()
+        render_collection_section()
     render_command_section()
 
 
@@ -375,9 +383,10 @@ def classification_metrics() -> dict[str, int]:
 
 def run_sample_validation() -> None:
     demo = DemoRuntime()
-    demo.check()
-    demo.capture("작업 전")
-    demo.capture("백본3 OFF 중")
+    demo.execution.on_change = lambda: render_trace(demo.execution, trace_slot)
+    with demo.execution.operation("작업 전 저장 → 작업 후 저장 → 자동 비교"):
+        demo.capture("작업 전")
+        demo.capture("백본3 OFF 중")
     st.session_state.runtime = demo
     st.session_state.comware_page = "비교 결과"
     st.rerun()
@@ -584,11 +593,21 @@ def render_diff_details(planned_off: bool, planned_vlan: bool) -> None:
 
 
 def render_compare_page() -> None:
-    planned_off, planned_vlan = render_compare_controls()
+    global trace_slot
+    controls_area = st.container()
+    trace_slot = st.empty()
+    r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
+    render_trace(r.execution, trace_slot)
+    with controls_area:
+        planned_off, planned_vlan = render_compare_controls()
     render_diff_details(planned_off, planned_vlan)
 
 
 def render_logs_page() -> None:
+    global trace_slot
+    trace_slot = st.empty()
+    r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
+    render_trace(r.execution, trace_slot)
     st.markdown("### 작업 로그")
     st.markdown(
         '<div class="section-note"><b>실행 이력</b><br>'
@@ -620,3 +639,6 @@ st.link_button(
     "GitHub Source",
     "https://github.com/sebia1993/hpe-comware-change-validator",
 )
+
+# Bind UI notifications only for the active Streamlit script run.
+r.execution.on_change = None

@@ -142,6 +142,54 @@ class DemoTests(unittest.TestCase):
         self.assertIsNotNone(app.session_state.runtime.summary)
         self.assertFalse(app.exception)
 
+    def test_execution_trace_snapshot_diff_classification_and_sample(self):
+        r = self.r
+        updates = []
+        r.execution.on_change = lambda: updates.append(
+            [s.status for s in r.execution.steps]
+        )
+        with r.execution.operation("작업 전후 검증"):
+            r.capture("작업 전")
+            r.capture("백본3 OFF 중")
+        steps = {s.id: s for s in r.execution.steps}
+        self.assertTrue(
+            {"preflight", "collect", "snapshot", "diff", "classification", "report"}
+            <= steps.keys()
+        )
+        self.assertEqual(
+            [
+                s.evidence["snapshot_id"]
+                for s in r.execution.steps
+                if s.id == "snapshot"
+            ],
+            [1, 2],
+        )
+        self.assertEqual(steps["diff"].evidence["items"], len(r.summary.items))
+        counts = steps["classification"].evidence["classification"]
+        for label, count in counts.items():
+            self.assertEqual(
+                count, sum(row["Classification"] == label for row in r.rows)
+            )
+        self.assertGreater(counts["Unknown"], 0)
+        self.assertEqual(steps["classification"].status, "warning")
+        self.assertEqual(steps["report"].evidence["zip_bytes"], len(r.zip_bytes))
+        self.assertTrue(any("running" in update for update in updates))
+        r.capture("복구 후")
+        step = next(s for s in r.execution.steps if s.id == "classification")
+        self.assertEqual(step.evidence["classification"]["Unchanged"], len(r.rows))
+        self.assertEqual(step.evidence["classification"]["Unknown"], 0)
+        app = AppTest.from_file(str(Path(__file__).with_name("app.py"))).run()
+        app.radio[0].set_value("비교 결과").run()
+        next(b for b in app.button if b.label == "샘플 검증 생성").click().run()
+        self.assertFalse(app.exception)
+        self.assertTrue(
+            any(
+                "실행 과정" in m.value and "ReportWriter" in m.value
+                for m in app.markdown
+            )
+        )
+        self.assertTrue(app.session_state.runtime.rows)
+
 
 if __name__ == "__main__":
     unittest.main()
