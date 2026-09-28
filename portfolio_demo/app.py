@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -12,7 +14,7 @@ from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 
 st.set_page_config(
-    page_title="Comware Change Validation · Public Demo",
+    page_title="백본 상태 추적 콘솔 · Public Web Edition",
     page_icon="🔎",
     layout="wide",
 )
@@ -20,24 +22,63 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .block-container {padding-top:1.5rem; padding-bottom:3rem; max-width:1500px;}
-    .product-kicker {font-size:.78rem; letter-spacing:.08em; font-weight:800; color:#7da7ff; margin-bottom:.25rem;}
-    .product-title {font-size:2.15rem; line-height:1.1; font-weight:800; margin:0;}
-    .product-sub {color:#8a98aa; margin-top:.45rem; margin-bottom:1rem;}
-    .demo-badge {display:inline-block; border:1px solid #31445f; border-radius:999px; padding:.22rem .62rem;
-                 font-size:.72rem; font-weight:750; color:#afc8ee; background:#101927; margin-right:.35rem;}
-    .step-card {border:1px solid rgba(120,145,175,.25); border-radius:12px; padding:.7rem .85rem;
-                background:rgba(18,27,41,.55); min-height:78px;}
-    .step-no {font-size:.72rem; color:#7da7ff; font-weight:800;}
-    .step-title {font-size:.95rem; font-weight:760; margin-top:.15rem;}
-    .step-state {font-size:.76rem; color:#8494a8; margin-top:.25rem;}
-    .explain-card {
-        border:1px solid rgba(120,145,175,.24); border-radius:12px;
-        padding:.85rem 1rem; background:rgba(18,27,41,.5); min-height:118px;
+    .block-container {
+        max-width: 1540px;
+        padding-top: 1.15rem;
+        padding-bottom: 3rem;
     }
-    .explain-label {font-size:.72rem; color:#7da7ff; font-weight:800; letter-spacing:.04em;}
-    .explain-title {font-size:1rem; font-weight:780; margin:.2rem 0 .35rem;}
-    .explain-copy {font-size:.86rem; color:#91a0b3; line-height:1.45;}
+    .brand-box {
+        border: 1px solid rgba(120, 145, 175, .24);
+        border-radius: 13px;
+        padding: 12px 15px;
+        background: rgba(15, 23, 35, .58);
+        margin-bottom: .55rem;
+    }
+    .brand-title {
+        font-size: 1.45rem;
+        font-weight: 850;
+    }
+    .brand-sub {
+        color: #8797aa;
+        font-size: .8rem;
+        margin-top: .15rem;
+    }
+    .top-stat {
+        border: 1px solid rgba(120, 145, 175, .24);
+        border-radius: 9px;
+        padding: 8px 10px;
+        min-height: 58px;
+        background: rgba(17, 26, 39, .55);
+    }
+    .top-stat-label {
+        color: #8293a7;
+        font-size: .68rem;
+        font-weight: 750;
+    }
+    .top-stat-value {
+        font-size: .88rem;
+        font-weight: 820;
+        margin-top: .18rem;
+    }
+    .section-note {
+        border-left: 4px solid #4b8bff;
+        padding: 8px 11px;
+        background: rgba(43, 89, 160, .12);
+        border-radius: 6px;
+        font-size: .84rem;
+        color: #9bacbf;
+        margin-bottom: .65rem;
+    }
+    .demo-pill {
+        display: inline-block;
+        border: 1px solid #38506d;
+        border-radius: 999px;
+        padding: .16rem .5rem;
+        margin-right: .3rem;
+        color: #afc8ee;
+        font-size: .66rem;
+        font-weight: 800;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -45,412 +86,539 @@ st.markdown(
 
 if "runtime" not in st.session_state:
     st.session_state.runtime = DemoRuntime()
+if "comware_page" not in st.session_state:
+    st.session_state.comware_page = "장비 설정"
+if "comware_demo_vlan" not in st.session_state:
+    st.session_state.comware_demo_vlan = False
+if "comware_demo_resource" not in st.session_state:
+    st.session_state.comware_demo_resource = False
+if "comware_demo_timeout" not in st.session_state:
+    st.session_state.comware_demo_timeout = False
+
 r = st.session_state.runtime
 
 
-def render_header() -> None:
-    st.markdown(
-        '<div class="product-kicker">NETWORK CHANGE VALIDATION</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div class="product-title">네트워크 변경 전·후 검증 도구</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div class="product-sub">네트워크 작업 전 상태를 기준으로 저장하고 작업 후와 자동 비교해 '
-        '계획된 변화, 위험 신호와 수집 실패를 구분합니다.</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<span class="demo-badge">PUBLIC DEMO</span>'
-        '<span class="demo-badge">SYNTHETIC CLI</span>'
-        '<span class="demo-badge">READ ONLY</span>',
-        unsafe_allow_html=True,
-    )
+def current_state() -> str:
+    if r.summary is not None:
+        return "비교 완료"
+    if r.catalog:
+        return "Snapshot 준비"
+    if r.preflight is not None:
+        return "설정 점검 완료"
+    return "대기"
 
 
+def baseline_text() -> str:
+    if r.baseline is None:
+        return "-"
+    return f"#{r.baseline + 1}"
 
-def render_explainer() -> None:
-    st.markdown("### 이 도구는 무엇을 해결하나요?")
-    cols = st.columns(3)
-    cards = (
-        (
-            "현업 문제",
-            "작업 후 수십 개 상태를 재확인",
-            "백본 작업 뒤 Interface, LACP, OSPF, VRRP, CPU 같은 상태를 사람이 다시 비교하면 "
-            "누락과 판단 편차가 생길 수 있습니다.",
-        ),
-        (
-            "자동화 방식",
-            "Pre / Post Snapshot 자동 비교",
-            "작업 전 상태를 기준 Snapshot으로 저장하고, 작업 후 동일 장비·명령 결과를 구조화해 "
-            "무엇이 바뀌었는지 자동으로 찾습니다.",
-        ),
-        (
-            "운영 결과",
-            "위험 / 계획 / 확인 불가 분류",
-            "변화를 단순 diff로 끝내지 않고 Critical, Warning, Expected, Unexpected, Unknown으로 "
-            "나눠 우선 확인 대상을 보여줍니다.",
-        ),
-    )
-    for col, (label, title, copy) in zip(cols, cards):
-        col.markdown(
-            '<div class="explain-card">'
-            f'<div class="explain-label">{label}</div>'
-            f'<div class="explain-title">{title}</div>'
-            f'<div class="explain-copy">{copy}</div>'
+
+def target_text() -> str:
+    if r.pair is None:
+        return "-"
+    return f"#{r.pair[1] + 1}"
+
+
+def render_topbar() -> None:
+    left, right = st.columns([3.7, 2.3])
+    with left:
+        page_descriptions = {
+            "장비 설정": "접속 계정, 대상 장비, 상태 수집을 한 화면에서 실행합니다.",
+            "비교 결과": "선택한 두 Snapshot의 명령 출력 차이를 구조화해 확인합니다.",
+            "작업 로그": "수집, 비교, 오류와 보고서 생성 이력을 시간 순서대로 확인합니다.",
+        }
+        st.markdown(
+            '<div class="brand-box">'
+            f'<div class="brand-title">{st.session_state.comware_page}</div>'
+            f'<div class="brand-sub">{page_descriptions[st.session_state.comware_page]}</div>'
             '</div>',
             unsafe_allow_html=True,
         )
-    st.info(
-        "예시: 백본 장비 OFF 작업 후 링크·LACP·OSPF·VRRP 변화가 계획과 일치하는지, "
-        "수집 실패 때문에 확인할 수 없는 항목은 없는지를 작업 전 상태와 자동 비교합니다."
-    )
-    c = st.columns([1.45, 3.55])
-    if c[0].button(
-        "▶ 샘플 변경 검증 1-click",
-        type="primary",
-        use_container_width=True,
-    ):
-        demo = DemoRuntime()
-        demo.check()
-        demo.capture("작업 전")
-        demo.capture("백본3 OFF 중")
-        st.session_state.runtime = demo
-        st.rerun()
-    c[1].caption(
-        "한 번 클릭하면 Pre-Change Snapshot → 작업 중 Snapshot → 자동 비교까지 실행해 "
-        "대표 결과를 바로 보여줍니다."
-    )
-
-    with st.expander("용어를 쉽게 보기", expanded=False):
-        st.write("**Snapshot**: 특정 시점의 장비 상태 명령 결과를 묶어 저장한 기준 자료")
-        st.write("**Expected**: 변화가 계획과 일치한다는 뜻이며, Critical/Warning 등급 자체를 숨기지 않음")
-        st.write("**Unexpected**: 작업 계획에 없던 변화로 추가 확인이 필요한 항목")
-        st.write("**Unknown**: CLI 수집 실패 등으로 정상/이상을 판단할 근거가 부족한 항목")
-
-
-def result_counts() -> dict[str, int]:
-    if not r.summary:
-        return {}
-    labels = ["Critical", "Warning", "Expected", "Unexpected", "Unknown", "Unchanged"]
-    return {
-        key: sum(
-            row["Severity" if key in ("Critical", "Warning") else "Classification"] == key
-            for row in r.rows
+    with right:
+        cols = st.columns(3)
+        values = (
+            ("현재 상태", current_state()),
+            ("기준", baseline_text()),
+            ("비교 대상", target_text()),
         )
-        for key in labels
-    }
-
-
-def render_plain_summary() -> None:
-    counts = result_counts()
-    if not counts:
-        return
-    risky = counts["Critical"] + counts["Warning"]
-    st.markdown("### 이번 비교에서 무엇을 알 수 있나요?")
-    if risky:
-        st.warning(
-            f"결론: 작업 전 대비 긴급/주의 항목 {risky}건이 확인됐습니다. "
-            f"계획된 변화 {counts['Expected']}건, 비계획 변화 {counts['Unexpected']}건, "
-            f"수집 부족으로 확인 불가 {counts['Unknown']}건입니다."
-        )
-    else:
-        st.success(
-            f"결론: 작업 전 대비 긴급/주의 변화가 확인되지 않았습니다. "
-            f"계획된 변화 {counts['Expected']}건, 확인 불가 {counts['Unknown']}건입니다."
-        )
-    st.caption(
-        "상세 근거는 아래 3. Validation 탭에서 Before / After와 함께 확인할 수 있습니다."
-    )
+        for col, (label, value) in zip(cols, values, strict=True):
+            col.markdown(
+                '<div class="top-stat">'
+                f'<div class="top-stat-label">{label}</div>'
+                f'<div class="top-stat-value">{value}</div>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
 
 
 def render_sidebar() -> None:
     with st.sidebar:
-        st.subheader("Change Workspace")
-        st.caption("브라우저 세션마다 임시 작업공간을 사용합니다.")
-        st.write(f"**Devices**  {len(DEVICES)}")
-        st.write(f"**Read-only commands**  {len(COMMANDS)}")
-        st.write("**Snapshot limit**  20")
+        st.markdown(
+            '<div style="display:flex;gap:.6rem;align-items:center;margin-bottom:1rem">'
+            '<div style="background:#3076d8;color:white;font-weight:850;'
+            'padding:.7rem .65rem;border-radius:7px">백본</div>'
+            '<div style="font-weight:850;line-height:1.2">백본 상태<br>추적 콘솔</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        page = st.radio(
+            "Navigation",
+            ["장비 설정", "비교 결과", "작업 로그"],
+            index=["장비 설정", "비교 결과", "작업 로그"].index(
+                st.session_state.comware_page
+            ),
+            format_func=lambda value: {
+                "장비 설정": "장비 설정
+접속 계정/대상 장비/상태 수집",
+                "비교 결과": "비교 결과
+기준/대상 변경점",
+                "작업 로그": "작업 로그
+실행 이력과 오류",
+            }[value],
+            label_visibility="collapsed",
+        )
+        if page != st.session_state.comware_page:
+            st.session_state.comware_page = page
+            st.rerun()
+
         st.divider()
-        st.caption("실제 SSH/계정/known_hosts는 사용하지 않습니다.")
+        st.markdown(
+            '<span class="demo-pill">PUBLIC WEB EDITION</span>'
+            '<span class="demo-pill">READ ONLY</span>',
+            unsafe_allow_html=True,
+        )
+        st.caption("v0.9.0 · 실제 SSH 대신 합성 CLI만 사용")
         if st.button("Demo Reset", use_container_width=True):
             r.close()
             st.session_state.runtime = DemoRuntime()
+            st.session_state.comware_page = "장비 설정"
             st.rerun()
 
 
-def render_workflow_strip() -> None:
-    has_preflight = r.preflight is not None
-    has_baseline = r.baseline is not None
-    has_post = len(r.catalog) >= 2
-    has_compare = r.summary is not None
-    states = [
-        ("1", "Preflight", "완료" if has_preflight else "대기"),
-        ("2", "Pre-Change Snapshot", "완료" if has_baseline else "대기"),
-        ("3", "Post-Change Snapshot", "완료" if has_post else "대기"),
-        ("4", "Diff / Validation", "완료" if has_compare else "대기"),
-    ]
-    cols = st.columns(4)
-    for col, (no, title, state) in zip(cols, states):
-        col.markdown(
-            f'<div class="step-card"><div class="step-no">STEP {no}</div>'
-            f'<div class="step-title">{title}</div>'
-            f'<div class="step-state">{state}</div></div>',
+def render_access_section() -> None:
+    st.markdown("### 접속 계정")
+    with st.container(border=True):
+        fields = st.columns([2, 2, 1])
+        fields[0].text_input(
+            "계정",
+            value="Public Demo에서는 입력하지 않습니다",
+            disabled=True,
+        )
+        fields[1].text_input(
+            "암호",
+            value="synthetic-only",
+            type="password",
+            disabled=True,
+        )
+        fields[2].text_input(
+            "제한시간(초)",
+            value="30",
+            disabled=True,
+        )
+        st.markdown(
+            '<div class="section-note"><b>운영 입력 순서</b><br>'
+            '접속 계정과 대상 장비를 먼저 확인한 뒤 설정 점검을 실행하고, '
+            '이상이 없으면 상태 수집을 시작합니다.</div>',
             unsafe_allow_html=True,
         )
 
 
-def render_preflight() -> None:
-    st.subheader("장비 / Preflight")
-    c = st.columns([1, 4])
-    if c[0].button("설정 점검", type="primary", use_container_width=True):
-        r.check()
-    c[1].caption(
-        "실제 운영에서는 작업 전 장비 목록과 조회 명령을 확인합니다. "
-        "Public Demo의 문서용 IP 주의는 의도된 설정입니다."
+def render_devices_section() -> None:
+    st.markdown("### 대상 장비")
+    st.dataframe(
+        [
+            {
+                "사용": device.enabled,
+                "장비명": device.name,
+                "IP/호스트": device.host,
+                "포트": device.port,
+                "장비 타입": device.device_type,
+            }
+            for device in DEVICES
+        ],
+        hide_index=True,
+        width="stretch",
+    )
+    actions = st.columns([1, 1, 1, 2])
+    actions[0].button("장비 추가", disabled=True, use_container_width=True)
+    actions[1].button("장비 목록 불러오기", disabled=True, use_container_width=True)
+    actions[2].button("장비 목록 저장", disabled=True, use_container_width=True)
+    enabled = sum(device.enabled for device in DEVICES)
+    actions[3].caption(
+        f"대상 요약 · 사용 {enabled}대 / 입력 {len(DEVICES)}대 / 행 {len(DEVICES)}개"
     )
 
-    if r.preflight:
-        x = st.columns(3)
-        x[0].metric("Error", r.preflight.error_count)
-        x[1].metric("Warning", r.preflight.warning_count)
-        x[2].metric("Devices", len(DEVICES))
-        st.dataframe([asdict(i) for i in r.preflight.issues], hide_index=True, width="stretch")
 
-    with st.expander("장비 / Command Set", expanded=False):
-        st.dataframe([asdict(d) for d in DEVICES], hide_index=True, width="stretch")
-        st.dataframe([asdict(c) for c in COMMANDS], hide_index=True, width="stretch")
-
-
-def render_snapshot_workspace():
-    st.subheader("Change Snapshot")
-    st.caption(
-        "작업 전 기준을 먼저 저장한 뒤 후속 상태를 수집하면 production DiffEngine이 자동 비교합니다."
-    )
-
-    stage = st.selectbox("작업 단계", WORK_STAGE_NAMES)
-    label = ""
-    vlan = resource = timeout = False
-
-    with st.expander("Demo controls · 합성 변화/수집 실패 재현", expanded=False):
-        st.caption(
-            "실제 프로그램의 입력 경로와 분리된 공개 데모용 변화 주입입니다. "
-            "기본 흐름은 Pre-Change → Post-Change → 자동 비교입니다."
+def capture_snapshot(
+    stage: str,
+    label: str,
+    planned_off: bool,
+    planned_vlan: bool,
+) -> None:
+    try:
+        r.capture(
+            stage,
+            label if stage == CUSTOM_STAGE else "",
+            planned_off=planned_off,
+            planned_vlan=planned_vlan,
+            vlan=st.session_state.comware_demo_vlan,
+            resource=st.session_state.comware_demo_resource,
+            timeout=st.session_state.comware_demo_timeout,
         )
-        label = st.text_input(
-            "사용자 지정 단계명",
+    except ValueError as exc:
+        st.error(str(exc))
+
+
+def render_collection_section() -> None:
+    st.markdown("### 상태 수집")
+    with st.container(border=True):
+        cols = st.columns([1.4, 2, 1, 1])
+        stage = cols[0].selectbox("작업 단계", WORK_STAGE_NAMES)
+        label = cols[1].text_input(
+            "수집 단계명(선택)",
             disabled=stage != CUSTOM_STAGE,
             max_chars=60,
         )
-        if stage == CUSTOM_STAGE:
-            vlan = st.checkbox("VLAN 20 / Description 변경 적용")
-            resource = st.checkbox("CPU 사용률 85% 적용")
-            timeout = st.checkbox("BB3 OSPF CLI 수집 실패")
+        if cols[2].button("설정 점검", use_container_width=True):
+            r.check()
+            st.rerun()
+
+        planned_off = False
+        planned_vlan = False
+
+        if cols[3].button(
+            "상태 수집 시작",
+            type="primary",
+            use_container_width=True,
+            disabled=len(r.catalog) >= 20,
+        ):
+            capture_snapshot(stage, label, planned_off, planned_vlan)
+            st.rerun()
+
+        if r.preflight:
+            if r.preflight.has_errors:
+                st.error(
+                    f"설정 점검 실패 · Error {r.preflight.error_count} / "
+                    f"Warning {r.preflight.warning_count}"
+                )
+            elif r.preflight.warning_count:
+                st.warning(
+                    f"설정 점검 주의 · Error {r.preflight.error_count} / "
+                    f"Warning {r.preflight.warning_count}"
+                )
+            else:
+                st.success("설정 점검 통과")
+
         st.caption(
-            "‘백본3 OFF 중’은 BB3 응답 없음(Unknown), BB4 링크/LACP/OSPF/VRRP 변화가 관측되는 합성 작업입니다."
+            "작업 전 Snapshot이 있으면 후속 Snapshot 수집 시 자동으로 기준과 비교합니다."
         )
 
-    st.subheader("계획 변경")
-    p = st.columns(2)
-    planned_off = p[0].checkbox(
-        "BB3 OFF 영향을 계획된 변경으로 등록",
-        help="계획 일치 여부만 Expected로 분류하며 Critical/Warning 등급 자체는 유지합니다.",
-    )
-    planned_vlan = p[1].checkbox(
-        "VLAN / Description을 계획된 변경으로 등록",
-        help="사용자 지정 단계에서 VLAN/Description 변경을 계획된 변경으로 분류합니다.",
-    )
-
-    c = st.columns([1.2, 4])
-    capture = c[0].button(
-        "상태 수집 시작",
-        type="primary",
-        disabled=len(r.catalog) >= 20,
-        use_container_width=True,
-    )
-    c[1].caption(
-        "조회 전용 합성 CLI를 수집해 실제 SnapshotStore에 저장합니다. "
-        "작업 전 Snapshot이 있으면 후속 Snapshot은 자동으로 비교됩니다."
-    )
-    if capture:
-        try:
-            r.capture(
-                stage,
-                label if stage == CUSTOM_STAGE else "",
-                planned_off=planned_off,
-                planned_vlan=planned_vlan,
-                vlan=vlan,
-                resource=resource,
-                timeout=timeout,
+        with st.expander("Public Demo 합성 변화 입력", expanded=False):
+            st.caption(
+                "실제 Desktop App에서는 장비에서 읽은 상태를 사용합니다. "
+                "공개 Web Edition에서만 비교 동작을 보여주기 위해 합성 변화 값을 주입합니다."
             )
-        except ValueError as exc:
-            st.error(str(exc))
+            st.session_state.comware_demo_vlan = st.checkbox(
+                "VLAN 20 / Description 변경",
+                value=st.session_state.comware_demo_vlan,
+            )
+            st.session_state.comware_demo_resource = st.checkbox(
+                "CPU 사용률 85%",
+                value=st.session_state.comware_demo_resource,
+            )
+            st.session_state.comware_demo_timeout = st.checkbox(
+                "BB3 OSPF CLI 수집 실패",
+                value=st.session_state.comware_demo_timeout,
+            )
 
-    if not r.catalog:
-        st.info("Snapshot이 없습니다. ‘작업 전’을 선택해 Pre-Change 기준부터 수집하세요.")
-        return planned_off, planned_vlan
 
-    catalog = r.snapshot_rows()
-    st.dataframe(catalog, hide_index=True, width="stretch")
-    st.caption(
-        "자동 기준: "
-        + (f"#{r.baseline + 1}" if r.baseline is not None else "없음 · 작업 전을 먼저 수집하세요.")
-    )
+def render_command_section() -> None:
+    with st.expander("점검 명령 세트", expanded=False):
+        st.caption(
+            "읽기 전용 명령만 허용되며 실제 전송 직전에 다시 안전 검증합니다."
+        )
+        st.dataframe(
+            [asdict(command) for command in COMMANDS],
+            hide_index=True,
+            width="stretch",
+        )
 
-    fmt = lambda i: f"#{i + 1} {catalog[i]['Label']}"
-    base = st.selectbox(
-        "기준 Snapshot",
-        range(len(catalog)),
-        index=r.baseline or 0,
-        format_func=fmt,
-    )
-    target = st.selectbox(
-        "비교 Snapshot",
-        range(len(catalog)),
-        index=len(catalog) - 1,
-        format_func=fmt,
-    )
-    if st.button("선택 항목 비교"):
-        r.compare(base, target, planned_off, planned_vlan)
+
+def render_settings_page() -> None:
+    render_access_section()
+    render_devices_section()
+    render_collection_section()
+    render_command_section()
+
+
+def severity_metrics() -> dict[str, int]:
+    keys = ("Critical", "Warning", "Info", "Unchanged")
+    if not r.summary:
+        return {key: 0 for key in keys}
+    return {
+        key: sum(
+            item.severity == key
+            or (key == "Unchanged" and item.status == "unchanged")
+            for item in r.summary.items
+        )
+        for key in keys
+    }
+
+
+def classification_metrics() -> dict[str, int]:
+    keys = ("Expected", "Unexpected", "Unknown")
+    if not r.summary:
+        return {key: 0 for key in keys}
+    return {
+        key: sum(row["Classification"] == key for row in r.rows)
+        for key in keys
+    }
+
+
+def run_sample_validation() -> None:
+    demo = DemoRuntime()
+    demo.check()
+    demo.capture("작업 전")
+    demo.capture("백본3 OFF 중")
+    st.session_state.runtime = demo
+    st.session_state.comware_page = "비교 결과"
+    st.rerun()
+
+
+def render_compare_controls() -> tuple[bool, bool]:
+    st.markdown("### Snapshot 비교")
+    planned_off = False
+    planned_vlan = False
+
+    with st.container(border=True):
+        if not r.catalog:
+            st.info(
+                "Snapshot이 없습니다. 장비 설정에서 ‘작업 전’ 상태를 수집하거나 "
+                "아래 샘플 검증을 실행하세요."
+            )
+            if st.button(
+                "샘플 검증 생성",
+                type="primary",
+                use_container_width=True,
+            ):
+                run_sample_validation()
+            return planned_off, planned_vlan
+
+        catalog = r.snapshot_rows()
+        fmt = lambda index: f"#{index + 1} {catalog[index]['Label']}"
+        cols = st.columns([2, 2, 1])
+        base = cols[0].selectbox(
+            "기준 스냅샷",
+            range(len(catalog)),
+            index=r.baseline or 0,
+            format_func=fmt,
+        )
+        target = cols[1].selectbox(
+            "비교 스냅샷",
+            range(len(catalog)),
+            index=len(catalog) - 1,
+            format_func=fmt,
+        )
+        cols[2].button("목록 새로고침", disabled=True, use_container_width=True)
+
+        with st.expander("계획 변경 규칙", expanded=False):
+            planned_off = st.checkbox(
+                "BB3 OFF 영향을 계획된 변경으로 등록",
+                value=r.options[0] if r.summary else False,
+            )
+            planned_vlan = st.checkbox(
+                "VLAN / Description을 계획된 변경으로 등록",
+                value=r.options[1] if r.summary else False,
+            )
+            st.caption(
+                "계획과 일치하더라도 Critical / Warning 등급 자체는 숨기지 않습니다."
+            )
+
+        actions = st.columns(5)
+        if actions[0].button(
+            "선택 항목 비교",
+            type="primary",
+            use_container_width=True,
+        ):
+            try:
+                r.compare(base, target, planned_off, planned_vlan)
+                st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+
+        if actions[1].button("샘플 검증 생성", use_container_width=True):
+            run_sample_validation()
+
+        if r.html:
+            actions[2].download_button(
+                "최근 리포트",
+                r.html,
+                "diff_report.html",
+                "text/html",
+                use_container_width=True,
+            )
+            actions[3].download_button(
+                "공유 ZIP",
+                r.zip_bytes,
+                "change-validation-share.zip",
+                "application/zip",
+                use_container_width=True,
+            )
+        else:
+            actions[2].button("최근 리포트", disabled=True, use_container_width=True)
+            actions[3].button("공유 ZIP", disabled=True, use_container_width=True)
+
+        actions[4].button("결과 폴더", disabled=True, use_container_width=True)
+
+        st.dataframe(catalog, hide_index=True, width="stretch")
 
     return planned_off, planned_vlan
 
 
-def render_results(planned_off: bool, planned_vlan: bool) -> None:
-    st.subheader("변경 검증 결과")
+def render_diff_details(planned_off: bool, planned_vlan: bool) -> None:
+    st.markdown("### 변경 상세")
     if not r.summary:
-        st.info("Pre-Change와 Post-Change Snapshot이 준비되면 비교 결과가 이곳에 표시됩니다.")
+        st.info("비교 완료 후 변경된 항목과 Before / After를 표시합니다.")
         return
 
+    sev = severity_metrics()
+    cards = st.columns(4)
+    for col, key, label in zip(
+        cards,
+        ("Critical", "Warning", "Info", "Unchanged"),
+        ("긴급", "주의", "정보", "변경없음"),
+        strict=True,
+    ):
+        col.metric(label, sev[key])
+
+    cls = classification_metrics()
     st.caption(
-        f"분석 Snapshot #{r.pair[0] + 1} → #{r.pair[1] + 1} · "
-        f"계획 등록: BB3 OFF={r.options[0]}, VLAN={r.options[1]}"
+        f"계획 일치 {cls['Expected']} · 비계획 변화 {cls['Unexpected']} · "
+        f"확인 불가 {cls['Unknown']}"
     )
+
     if r.options != (planned_off, planned_vlan):
-        st.warning("계획 변경 설정이 바뀌었습니다. ‘선택 항목 비교’를 눌러 재분석하세요.")
+        st.warning(
+            "현재 계획 변경 선택과 마지막 비교 조건이 다릅니다. "
+            "선택 항목 비교를 다시 실행하면 분류가 갱신됩니다."
+        )
 
-    labels = ["Critical", "Warning", "Expected", "Unexpected", "Unknown", "Unchanged"]
-    counts = result_counts()
-    st.write(
-        "**Validation Status:** "
-        + ("확인 불가 포함" if counts["Unknown"] else "관측 완료")
+    filters = st.columns([1.2, 2.8, 1])
+    view = filters[0].selectbox(
+        "보기",
+        ["문제", "전체", "Critical", "Warning", "Info", "Unchanged", "Unknown"],
     )
-    for col, name in zip(st.columns(6), labels):
-        col.metric(name, counts[name])
-    st.caption("Expected는 계획 일치 여부입니다. Critical / Warning 등급은 그대로 유지됩니다.")
+    search = filters[1].text_input("검색")
+    filters[2].button("초기화", disabled=True, use_container_width=True)
 
-    c = st.columns([1, 2])
-    selected = c[0].selectbox("결과 Filter", ["전체", "문제"] + labels)
-    search = c[1].text_input("Device / Command / Finding 검색")
-    rows = [
-        row
-        for row in r.rows
-        if (
-            selected == "전체"
-            or (
-                selected == "문제"
-                and (
-                    row["Severity"] in ("Critical", "Warning", "Unknown")
-                    or row["Classification"] == "Unexpected"
-                )
+    def include(row: dict[str, object]) -> bool:
+        if search and search.casefold() not in str(row).casefold():
+            return False
+        if view == "전체":
+            return True
+        if view == "문제":
+            return (
+                row["Severity"] in {"Critical", "Warning", "Unknown"}
+                or row["Classification"] == "Unexpected"
             )
-            or selected in (row["Severity"], row["Classification"])
-        )
-        and search.lower() in str(row).lower()
+        return view in {row["Severity"], row["Classification"]}
+
+    rows = [row for row in r.rows if include(row)]
+    table = [
+        {
+            "등급": row["Severity"],
+            "장비": row["Device"],
+            "명령": row["Command"],
+            "판단": row["Finding"],
+            "유형": row["Classification"],
+            "라인": row["Changes"],
+            "변경 내용": row["Finding"],
+        }
+        for row in rows
     ]
-    st.dataframe(
-        [{k: v for k, v in row.items() if k != "Index"} for row in rows],
-        hide_index=True,
-        width="stretch",
-    )
+    st.dataframe(table, hide_index=True, width="stretch")
 
-    if rows:
-        detail = st.selectbox(
-            "변경 상세",
-            range(len(rows)),
-            format_func=lambda i: rows[i]["Device"] + " / " + rows[i]["Command"],
-        )
-        row = rows[detail]
-        item = r.summary.items[row["Index"]]
-        st.markdown(f"### {item.finding_title or item.summary}")
-        a, b, c = st.columns(3)
-        a.info("**영향**\n\n" + item.impact_reason)
-        b.info("**Evidence**\n\n" + item.evidence)
-        c.info("**권장 조치**\n\n" + item.action_hint)
-        if item.changed_lines:
-            st.dataframe([asdict(line) for line in item.changed_lines], hide_index=True)
-        before, after = st.columns(2)
-        with before:
-            st.markdown("**Before**")
-            st.code(row["Before"], language="text")
-        with after:
-            st.markdown("**After**")
-            st.code(row["After"], language="text")
-
-
-def render_reports() -> None:
-    st.subheader("보고서 / 공유")
-    if not r.html:
-        st.info("비교 실행 후 HTML Report와 Share ZIP을 생성합니다.")
+    if not rows:
+        st.caption("필터 조건에 맞는 변경 항목이 없습니다.")
         return
-    c = st.columns(2)
-    c[0].download_button(
-        "HTML Download",
-        r.html,
-        "comware-demo-v2.html",
-        "text/html",
-        use_container_width=True,
+
+    selected = st.selectbox(
+        "선택 변경 행",
+        range(len(rows)),
+        format_func=lambda index: (
+            f"{rows[index]['Severity']} · {rows[index]['Device']} · "
+            f"{rows[index]['Command']}"
+        ),
     )
-    c[1].download_button(
-        "Share ZIP Download",
-        r.zip_bytes,
-        "comware-demo-v2.zip",
-        "application/zip",
-        use_container_width=True,
+    row = rows[selected]
+    item = r.summary.items[row["Index"]]
+
+    st.markdown(
+        '<div class="section-note"><b>선택 변경 맥락</b><br>'
+        f'{item.finding_title or item.summary}<br>'
+        f'영향: {item.impact_reason}<br>'
+        f'권장 조치: {item.action_hint}</div>',
+        unsafe_allow_html=True,
     )
-    if st.checkbox("HTML Preview"):
+
+    if item.changed_lines:
+        st.dataframe(
+            [asdict(line) for line in item.changed_lines],
+            hide_index=True,
+            width="stretch",
+        )
+
+    before, after = st.columns(2)
+    with before:
+        st.markdown("**기준 원본**")
+        st.code(row["Before"], language="text")
+    with after:
+        st.markdown("**비교 원본**")
+        st.code(row["After"], language="text")
+
+    with st.expander("선택 상세 텍스트", expanded=False):
+        st.write(f"Evidence: {item.evidence}")
+        st.write(f"분류: {row['Classification']}")
+        st.write(f"등급: {row['Severity']}")
+
+    if r.html and st.checkbox("최근 HTML 리포트 미리보기"):
         components.html(r.html, height=650, scrolling=True)
 
 
-def render_logs() -> None:
-    st.subheader("작업 로그")
-    if not r.logs:
-        st.info("아직 작업 이력이 없습니다.")
-        return
-    st.dataframe(r.logs, hide_index=True, width="stretch")
+def render_compare_page() -> None:
+    planned_off, planned_vlan = render_compare_controls()
+    render_diff_details(planned_off, planned_vlan)
 
 
-render_header()
-render_explainer()
+def render_logs_page() -> None:
+    st.markdown("### 작업 로그")
+    st.markdown(
+        '<div class="section-note"><b>실행 이력</b><br>'
+        '수집 시작, 설정 오류, 비교 완료, 리포트 생성 위치를 시간 순서로 남깁니다. '
+        '실제 제품은 민감 정보를 로그 저장 전에 마스킹합니다.</div>',
+        unsafe_allow_html=True,
+    )
+    if r.logs:
+        st.dataframe(r.logs, hide_index=True, width="stretch")
+    else:
+        st.info("준비 완료. 장비 정보와 접속 계정을 확인한 뒤 작업 단계별 상태를 수집하세요.")
+
+
 render_sidebar()
-render_workflow_strip()
-render_plain_summary()
+render_topbar()
 
-preflight, snapshots, results, reports, logs = st.tabs(
-    ["1. Preflight", "2. Snapshot", "3. Validation", "4. Report", "작업 로그"]
+if st.session_state.comware_page == "장비 설정":
+    render_settings_page()
+elif st.session_state.comware_page == "비교 결과":
+    render_compare_page()
+else:
+    render_logs_page()
+
+st.caption(
+    "Public Web Edition · production Preflight / SnapshotStore / DiffEngine / "
+    "ExpectedChangeRule / ReportWriter 재사용 · 실제 SSH/계정 입력 없음"
 )
-with preflight:
-    render_preflight()
-with snapshots:
-    planned_off, planned_vlan = render_snapshot_workspace()
-with results:
-    render_results(planned_off, planned_vlan)
-with reports:
-    render_reports()
-with logs:
-    render_logs()
-
-with st.expander("Architecture", expanded=False):
-    st.write(
-        "Synthetic CommandResult → production SnapshotStore → DiffEngine → "
-        "ExpectedChangeRule → ReportWriter → Share ZIP"
-    )
-    st.caption(
-        "완성된 비교 결과 fixture를 표시하지 않습니다. Public Demo adapter는 합성 CLI 결과만 공급하며 "
-        "Snapshot, Diff, Expected/Unexpected 분류와 보고서는 production 코드를 재사용합니다."
-    )
 st.link_button(
     "GitHub Source",
     "https://github.com/sebia1993/hpe-comware-change-validator",
