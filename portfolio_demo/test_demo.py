@@ -124,6 +124,8 @@ class DemoTests(unittest.TestCase):
         button("상태 수집 시작").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.session_state.runtime.pair, (0, 1))
+        app.radio[0].set_value("비교 결과").run()
+        self.assertFalse(app.exception)
         next(
             c for c in app.checkbox if c.label == "BB3 OFF 영향을 계획된 변경으로 등록"
         ).check().run()
@@ -134,7 +136,8 @@ class DemoTests(unittest.TestCase):
         self.assertFalse(root.exists())
         self.assertFalse(app.session_state.runtime.catalog)
         self.assertFalse(app.exception)
-        button("▶ 샘플 변경 검증 1-click").click().run()
+        app.radio[0].set_value("비교 결과").run()
+        button("샘플 검증 생성").click().run()
         self.assertEqual(app.session_state.runtime.pair, (0, 1))
         self.assertIsNotNone(app.session_state.runtime.summary)
         self.assertFalse(app.exception)
