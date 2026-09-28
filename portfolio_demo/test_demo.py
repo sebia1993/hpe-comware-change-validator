@@ -234,7 +234,11 @@ class ScenarioTests(unittest.TestCase):
         self.assertTrue(r.html)
         with ZipFile(io.BytesIO(r.zip_bytes)) as archive:
             self.assertIsNone(archive.testzip())
-            self.assertEqual(archive.read("reports/diff_report.html").decode(), r.html)
+            # Snapshot/report text uses platform-native newlines on Windows.
+            self.assertEqual(
+                archive.read("reports/diff_report.html").decode().replace("\r\n", "\n"),
+                r.html,
+            )
         self.assertIsNone(r.execution.on_change)
         self.assertIsNotNone(r.execution.elapsed_ms)
 
