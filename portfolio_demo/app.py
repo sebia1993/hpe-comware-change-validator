@@ -154,6 +154,32 @@ def render_topbar() -> None:
             )
 
 
+
+def render_reviewer_summary() -> None:
+    st.markdown("### 이 프로젝트는 무엇을 해결하나요?")
+    left, right = st.columns(2)
+    with left:
+        with st.container(border=True):
+            st.markdown("**프로젝트 목적**")
+            st.write(
+                "네트워크 작업을 하기 전과 후의 상태를 자동으로 비교해, "
+                "의도한 변경과 예상하지 못한 이상, 그리고 확인할 수 없는 항목을 구분하는 검증 도구입니다."
+            )
+            st.caption(
+                "쉽게 말해: 작업 전 사진과 작업 후 사진을 비교하듯 네트워크 상태의 차이를 자동으로 검사합니다."
+            )
+    with right:
+        with st.container(border=True):
+            st.markdown("**이 데모에서 보여주는 것**")
+            st.write(
+                "작업 전 상태 저장 → 작업 후 상태 저장 → 자동 비교 → 위험 항목 분류 → "
+                "변경 전·후 근거와 보고서 생성까지의 전체 검증 과정을 보여줍니다."
+            )
+            st.caption(
+                "해커톤 관점: Before/After 데이터를 구조화하고, 변화의 의미와 우선순위를 자동으로 분류합니다."
+            )
+
+
 def render_sidebar() -> None:
     with st.sidebar:
         st.markdown(
@@ -623,6 +649,7 @@ def render_logs_page() -> None:
 
 render_sidebar()
 render_topbar()
+render_reviewer_summary()
 
 if st.session_state.comware_page == "장비 설정":
     render_settings_page()
