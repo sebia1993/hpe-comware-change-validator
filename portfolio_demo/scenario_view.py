@@ -19,7 +19,13 @@ def render_timeline(runner, slot):
     cards = "".join(
         '<article style="border:1px solid #8885;border-radius:10px;padding:1rem;margin:.6rem 0;overflow-wrap:anywhere">'
         f"<h4>STEP {index} · {escape(step.title)}</h4><p>{escape(step.description)}</p>"
-        f"<b>{labels[step.status]}</b> · {escape(step.result)}</article>"
+        f"<b>{labels[step.status]}</b> · {escape(step.result)}"
+        + (
+            f" · {step.elapsed_ms:.1f} ms"
+            if step.elapsed_ms is not None
+            else ""
+        )
+        + "</article>"
         for index, step in enumerate(run.steps, 1)
     )
     state = (
@@ -29,6 +35,36 @@ def render_timeline(runner, slot):
         '<section aria-label="Scenario Timeline"><h3>작업 검증 흐름</h3>'
         f"<p>{escape(run.name)} · {state}</p>{cards}</section>",
         unsafe_allow_html=True,
+    )
+
+
+
+def render_run_status(runner, st):
+    if not runner or not runner.run:
+        st.info("READY · 대표 검증을 실행하면 실제 6단계 처리 과정을 자동으로 진행합니다.")
+        st.progress(0, text="대기 중 · 0/6")
+        return
+
+    run = runner.run
+    total = len(run.steps)
+    completed = sum(
+        step.status in ("success", "warning", "failure") for step in run.steps
+    )
+    if run.error:
+        st.error(
+            f"FAILED · {min(run.current_index + 1, total)}/{total} · {run.error}"
+        )
+    elif run.completed:
+        duration = f" · {run.elapsed_ms:.1f} ms" if run.elapsed_ms is not None else ""
+        st.success(f"COMPLETED · {total}/{total} · 검증 완료{duration}")
+    else:
+        current = run.steps[run.current_index]
+        st.info(
+            f"RUNNING · {run.current_index + 1}/{total} · {current.title}"
+        )
+    st.progress(
+        min(completed / total, 1.0),
+        text=f"실제 처리 단계 · {completed}/{total}",
     )
 
 
