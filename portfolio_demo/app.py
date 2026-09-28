@@ -345,9 +345,15 @@ def render_command_section() -> None:
 
 
 def render_settings_page() -> None:
-    render_access_section()
-    render_devices_section()
-    render_collection_section()
+    global trace_slot
+    controls_area = st.container()
+    trace_slot = st.empty()
+    r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
+    render_trace(r.execution, trace_slot)
+    with controls_area:
+        render_access_section()
+        render_devices_section()
+        render_collection_section()
     render_command_section()
 
 
@@ -587,11 +593,21 @@ def render_diff_details(planned_off: bool, planned_vlan: bool) -> None:
 
 
 def render_compare_page() -> None:
-    planned_off, planned_vlan = render_compare_controls()
+    global trace_slot
+    controls_area = st.container()
+    trace_slot = st.empty()
+    r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
+    render_trace(r.execution, trace_slot)
+    with controls_area:
+        planned_off, planned_vlan = render_compare_controls()
     render_diff_details(planned_off, planned_vlan)
 
 
 def render_logs_page() -> None:
+    global trace_slot
+    trace_slot = st.empty()
+    r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
+    render_trace(r.execution, trace_slot)
     st.markdown("### 작업 로그")
     st.markdown(
         '<div class="section-note"><b>실행 이력</b><br>'
@@ -607,9 +623,6 @@ def render_logs_page() -> None:
 
 render_sidebar()
 render_topbar()
-trace_slot = st.empty()
-r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
-render_trace(r.execution, trace_slot)
 
 if st.session_state.comware_page == "장비 설정":
     render_settings_page()

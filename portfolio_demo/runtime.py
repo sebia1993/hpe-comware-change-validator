@@ -301,9 +301,9 @@ class DemoRuntime:
             "warning"
             if counts["Unknown"] or severities["Critical"] or severities["Warning"]
             else "success",
-            f"비교 {len(self.rows)}항목 · "
+            f"비교 {len(self.rows)}항목 · 변경 {counts['Expected'] + counts['Unexpected']} · 변경 분류: "
             + " · ".join(f"{key} {value}" for key, value in counts.items())
-            + " · "
+            + " · 위험도: "
             + " · ".join(f"{key} {value}" for key, value in severities.items()),
             {"items": len(self.rows), "classification": counts, "severity": severities},
         )
