@@ -198,6 +198,14 @@ class DemoTests(unittest.TestCase):
         self.assertTrue(app.session_state.runtime.rows)
 
 
+def finish_autorun(app):
+    for _ in range(16):
+        if not app.session_state.get("scenario_autorun", False):
+            return app
+        app.run()
+    raise AssertionError("scenario autorun did not complete")
+
+
 class ScenarioTests(unittest.TestCase):
     def runner(self, key):
         runner = ScenarioRunner()
@@ -214,7 +222,19 @@ class ScenarioTests(unittest.TestCase):
             patch("socket.create_connection", side_effect=AssertionError("No network")),
             patch.object(r, "check", wraps=r.check) as check,
             patch.object(r, "capture", wraps=r.capture) as capture,
-            patch.object(r, "compare", wraps=r.compare) as compare,
+            patch.object(
+                r, "prepare_comparison", wraps=r.prepare_comparison
+            ) as prepare,
+            patch.object(
+                r,
+                "classify_pending_comparison",
+                wraps=r.classify_pending_comparison,
+            ) as classify,
+            patch.object(
+                r,
+                "report_pending_comparison",
+                wraps=r.report_pending_comparison,
+            ) as report,
         ):
             run = runner.play(
                 "representative",
@@ -223,7 +243,9 @@ class ScenarioTests(unittest.TestCase):
         self.assertTrue(run.completed)
         self.assertTrue(check.called)
         self.assertEqual(capture.call_count, 2)
-        compare.assert_called_once_with(0, 1, False, True, automatic=True)
+        prepare.assert_called_once_with(0, 1, False, True, automatic=True)
+        classify.assert_called_once_with()
+        report.assert_called_once_with()
         self.assertEqual(r.pair, (0, 1))
         self.assertEqual(len(r.catalog), 2)
         self.assertEqual(len(run.steps), 6)
@@ -241,6 +263,30 @@ class ScenarioTests(unittest.TestCase):
             )
         self.assertIsNone(r.execution.on_change)
         self.assertIsNotNone(r.execution.elapsed_ms)
+
+    def test_state_machine_advances_one_real_phase_at_a_time(self):
+        runner = ScenarioRunner()
+        self.addCleanup(runner.runtime.close)
+        run = runner.start("representative")
+        self.assertEqual(run.current_index, 0)
+        self.assertEqual(run.steps[0].status, "running")
+
+        expected = ("preflight", "before", "after", "diff", "classify", "report")
+        for index, step_id in enumerate(expected):
+            self.assertEqual(run.steps[index].id, step_id)
+            runner.advance()
+            self.assertIn(run.steps[index].status, ("success", "warning"))
+            self.assertIsNotNone(run.steps[index].elapsed_ms)
+            if index + 1 < len(expected):
+                self.assertEqual(run.current_index, index + 1)
+                self.assertEqual(run.steps[index + 1].status, "running")
+
+        self.assertTrue(run.completed)
+        self.assertEqual(run.current_index, 6)
+        self.assertIsNotNone(run.elapsed_ms)
+        self.assertEqual(runner.runtime.pair, (0, 1))
+        self.assertTrue(runner.runtime.html)
+        self.assertTrue(runner.runtime.zip_bytes)
 
     def test_normal_has_only_planned_or_unchanged_results(self):
         r = self.runner("normal").runtime
@@ -347,6 +393,7 @@ class ScenarioTests(unittest.TestCase):
         next(
             b for b in app.button if b.label == "▶ 대표 네트워크 작업 검증 보기"
         ).click().run()
+        finish_autorun(app)
         self.assertFalse(app.exception)
         r = app.session_state.runtime
         self.addCleanup(r.close)
@@ -399,6 +446,7 @@ class ScenarioTests(unittest.TestCase):
         ):
             old = app.session_state.runtime.root
             next(b for b in app.button if b.label == label).click().run()
+            finish_autorun(app)
             self.assertFalse(app.exception)
             self.assertFalse(old.exists())
             r = app.session_state.runtime
@@ -427,6 +475,7 @@ class GuidedFlowTests(unittest.TestCase):
         next(
             b for b in app.button if b.label == "▶ 대표 네트워크 작업 검증 보기"
         ).click().run()
+        finish_autorun(app)
         self.assertFalse(app.exception)
         token = app.session_state.guided_run_id
         runner = app.session_state.scenario_runner
@@ -444,4 +493,5 @@ class GuidedFlowTests(unittest.TestCase):
         next(
             b for b in app.button if b.label == "▶ 대표 네트워크 작업 검증 보기"
         ).click().run()
+        finish_autorun(app)
         self.assertNotEqual(token, app.session_state.guided_run_id)
