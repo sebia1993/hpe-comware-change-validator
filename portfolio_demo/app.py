@@ -15,7 +15,7 @@ from portfolio_demo.runtime import DemoRuntime
 
 from portfolio_demo.execution_trace import render_trace
 from portfolio_demo.guided_flow import GuidedSlot, begin
-from portfolio_demo.scenario_runner import SCENARIOS, ScenarioRunner
+from portfolio_demo.scenario_runner import SCENARIOS, ScenarioRunner, business_finding
 from portfolio_demo.scenario_view import (
     render_timeline,
     render_result,
@@ -184,6 +184,66 @@ def render_reviewer_summary() -> None:
             )
             st.caption(
                 "해커톤 관점: Before/After 데이터를 구조화하고, 변화의 의미와 우선순위를 자동으로 분류합니다."
+            )
+
+
+
+def top_business_rows(runtime, limit=3):
+    if not runtime.summary:
+        return []
+
+    classification_priority = {
+        "Unexpected": 0,
+        "Unknown": 1,
+        "Expected": 2,
+    }
+    severity_priority = {
+        "Critical": 0,
+        "Warning": 1,
+        "Unknown": 2,
+        "Info": 3,
+        "Unchanged": 4,
+    }
+    rows = [
+        row for row in runtime.rows if row["Classification"] != "Unchanged"
+    ]
+    rows.sort(
+        key=lambda row: (
+            classification_priority.get(row["Classification"], 3),
+            severity_priority.get(row["Severity"], 5),
+            row["Index"],
+        )
+    )
+    return rows[:limit]
+
+
+def render_reviewer_findings(runtime) -> None:
+    if not runtime.summary:
+        return
+
+    st.markdown("### 가장 먼저 확인할 결과")
+    rows = top_business_rows(runtime)
+    if not rows:
+        st.success("추가 확인이 필요한 변화가 없습니다.")
+        return
+
+    labels = {
+        "Expected": "작업 계획과 일치",
+        "Unexpected": "추가 확인 필요",
+        "Unknown": "정보 부족으로 판단 불가",
+    }
+    for row in rows:
+        view = business_finding(runtime, row)
+        classification = view["classification"]
+        with st.container(border=True):
+            st.markdown(
+                f"**{labels.get(classification, classification)} · "
+                f"{view['device']}**"
+            )
+            st.write(view["message"])
+            st.caption(
+                "상세 판정 근거와 작업 전·후 원본은 아래 "
+                "'판단 근거 / 주요 확인 항목'에서 확인할 수 있습니다."
             )
 
 
@@ -683,6 +743,7 @@ st.write(
 st.caption(
     "HPE Comware Change Validator · Public Web Edition · 비식별 합성 데이터 · 실제 장비 변경 없음"
 )
+render_reviewer_summary()
 controls = st.container()
 timeline_slot = GuidedSlot(
     st.empty(), lambda: getattr(st.session_state.get("scenario_runner"), "run", None)
@@ -712,6 +773,7 @@ runner = st.session_state.get("scenario_runner")
 render_timeline(runner, timeline_slot)
 with result_slot:
     render_result(r, st)
+    render_reviewer_findings(r)
     if r.html:
         actions = st.columns(2)
         actions[0].download_button(
