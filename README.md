@@ -18,6 +18,8 @@ Live Demo에서는 **샘플 변경 검증 1-click**으로 Pre-Change → 작업 
 
 > **Public Web Edition:** 실제 Tk `백본 상태 추적 콘솔`의 좌측 Navigation(`장비 설정 / 비교 결과 / 작업 로그`), Topbar 상태, 접속·대상 장비·상태 수집, Snapshot 비교, 변경 상세, Raw Before/After, 보고서/공유 흐름을 브라우저로 옮겼습니다. 공개 URL에서는 실제 SSH 대신 합성 CommandResult만 공급하며 Preflight·SnapshotStore·DiffEngine·ReportWriter는 production 코드를 재사용합니다.
 
+Public Web Edition은 대표 네트워크 작업 시나리오를 한 번의 클릭으로 재생하고, 작업 전 상태 저장 → 작업 후 재수집 → 자동 비교 → 위험도 분류 → 보고서 생성까지 실제 production 로직을 통해 보여줍니다.
+
 
 [![Windows 검증](https://github.com/sebia1993/hpe-comware-change-validator/actions/workflows/pr-build.yml/badge.svg?branch=main)](https://github.com/sebia1993/hpe-comware-change-validator/actions/workflows/pr-build.yml)
 

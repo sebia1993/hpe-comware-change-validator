@@ -14,9 +14,16 @@ from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 
 from portfolio_demo.execution_trace import render_trace
+from portfolio_demo.scenario_runner import SCENARIOS, ScenarioRunner
+from portfolio_demo.scenario_view import (
+    render_timeline,
+    render_result,
+    render_business_trace,
+    render_findings,
+)
 
 st.set_page_config(
-    page_title="백본 상태 추적 콘솔 · Public Web Edition",
+    page_title="Network Change Validator · Public Web Edition",
     page_icon="🔎",
     layout="wide",
 )
@@ -134,7 +141,7 @@ def render_topbar() -> None:
             '<div class="brand-box">'
             f'<div class="brand-title">{st.session_state.comware_page}</div>'
             f'<div class="brand-sub">{page_descriptions[st.session_state.comware_page]}</div>'
-            '</div>',
+            "</div>",
             unsafe_allow_html=True,
         )
     with right:
@@ -149,10 +156,9 @@ def render_topbar() -> None:
                 '<div class="top-stat">'
                 f'<div class="top-stat-label">{label}</div>'
                 f'<div class="top-stat-value">{value}</div>'
-                '</div>',
+                "</div>",
                 unsafe_allow_html=True,
             )
-
 
 
 def render_reviewer_summary() -> None:
@@ -181,13 +187,13 @@ def render_reviewer_summary() -> None:
 
 
 def render_sidebar() -> None:
-    with st.sidebar:
+    with st.container():
         st.markdown(
             '<div style="display:flex;gap:.6rem;align-items:center;margin-bottom:1rem">'
             '<div style="background:#3076d8;color:white;font-weight:850;'
             'padding:.7rem .65rem;border-radius:7px">백본</div>'
             '<div style="font-weight:850;line-height:1.2">백본 상태<br>추적 콘솔</div>'
-            '</div>',
+            "</div>",
             unsafe_allow_html=True,
         )
         page = st.radio(
@@ -215,6 +221,7 @@ def render_sidebar() -> None:
         )
         st.caption("v0.9.0 · 실제 SSH 대신 합성 CLI만 사용")
         if st.button("Demo Reset", use_container_width=True):
+            st.session_state.pop("scenario_runner", None)
             r.close()
             st.session_state.runtime = DemoRuntime()
             st.session_state.comware_page = "장비 설정"
@@ -243,8 +250,8 @@ def render_access_section() -> None:
         )
         st.markdown(
             '<div class="section-note"><b>운영 입력 순서</b><br>'
-            '접속 계정과 대상 장비를 먼저 확인한 뒤 설정 점검을 실행하고, '
-            '이상이 없으면 상태 수집을 시작합니다.</div>',
+            "접속 계정과 대상 장비를 먼저 확인한 뒤 설정 점검을 실행하고, "
+            "이상이 없으면 상태 수집을 시작합니다.</div>",
             unsafe_allow_html=True,
         )
 
@@ -281,6 +288,7 @@ def capture_snapshot(
     planned_off: bool,
     planned_vlan: bool,
 ) -> None:
+    st.session_state.pop("scenario_runner", None)
     try:
         r.capture(
             stage,
@@ -306,6 +314,7 @@ def render_collection_section() -> None:
             max_chars=60,
         )
         if cols[2].button("설정 점검", use_container_width=True):
+            st.session_state.pop("scenario_runner", None)
             r.check()
             st.rerun()
 
@@ -360,9 +369,7 @@ def render_collection_section() -> None:
 
 def render_command_section() -> None:
     with st.expander("점검 명령 세트", expanded=False):
-        st.caption(
-            "읽기 전용 명령만 허용되며 실제 전송 직전에 다시 안전 검증합니다."
-        )
+        st.caption("읽기 전용 명령만 허용되며 실제 전송 직전에 다시 안전 검증합니다.")
         st.dataframe(
             [asdict(command) for command in COMMANDS],
             hide_index=True,
@@ -389,8 +396,7 @@ def severity_metrics() -> dict[str, int]:
         return {key: 0 for key in keys}
     return {
         key: sum(
-            item.severity == key
-            or (key == "Unchanged" and item.status == "unchanged")
+            item.severity == key or (key == "Unchanged" and item.status == "unchanged")
             for item in r.summary.items
         )
         for key in keys
@@ -401,18 +407,17 @@ def classification_metrics() -> dict[str, int]:
     keys = ("Expected", "Unexpected", "Unknown")
     if not r.summary:
         return {key: 0 for key in keys}
-    return {
-        key: sum(row["Classification"] == key for row in r.rows)
-        for key in keys
-    }
+    return {key: sum(row["Classification"] == key for row in r.rows) for key in keys}
 
 
 def run_sample_validation() -> None:
+    st.session_state.pop("scenario_runner", None)
     demo = DemoRuntime()
     demo.execution.on_change = lambda: render_trace(demo.execution, trace_slot)
     with demo.execution.operation("작업 전 저장 → 작업 후 저장 → 자동 비교"):
         demo.capture("작업 전")
         demo.capture("백본3 OFF 중")
+    r.close()
     st.session_state.runtime = demo
     st.session_state.comware_page = "비교 결과"
     st.rerun()
@@ -474,6 +479,7 @@ def render_compare_controls() -> tuple[bool, bool]:
             use_container_width=True,
         ):
             try:
+                st.session_state.pop("scenario_runner", None)
                 r.compare(base, target, planned_off, planned_vlan)
                 st.rerun()
             except ValueError as exc:
@@ -588,9 +594,9 @@ def render_diff_details(planned_off: bool, planned_vlan: bool) -> None:
 
     st.markdown(
         '<div class="section-note"><b>선택 변경 맥락</b><br>'
-        f'{item.finding_title or item.summary}<br>'
-        f'영향: {item.impact_reason}<br>'
-        f'권장 조치: {item.action_hint}</div>',
+        f"{item.finding_title or item.summary}<br>"
+        f"영향: {item.impact_reason}<br>"
+        f"권장 조치: {item.action_hint}</div>",
         unsafe_allow_html=True,
     )
 
@@ -637,35 +643,105 @@ def render_logs_page() -> None:
     st.markdown("### 작업 로그")
     st.markdown(
         '<div class="section-note"><b>실행 이력</b><br>'
-        '수집 시작, 설정 오류, 비교 완료, 리포트 생성 위치를 시간 순서로 남깁니다. '
-        '실제 제품은 민감 정보를 로그 저장 전에 마스킹합니다.</div>',
+        "수집 시작, 설정 오류, 비교 완료, 리포트 생성 위치를 시간 순서로 남깁니다. "
+        "실제 제품은 민감 정보를 로그 저장 전에 마스킹합니다.</div>",
         unsafe_allow_html=True,
     )
     if r.logs:
         st.dataframe(r.logs, hide_index=True, width="stretch")
     else:
-        st.info("준비 완료. 장비 정보와 접속 계정을 확인한 뒤 작업 단계별 상태를 수집하세요.")
+        st.info(
+            "준비 완료. 장비 정보와 접속 계정을 확인한 뒤 작업 단계별 상태를 수집하세요."
+        )
 
 
-render_sidebar()
-render_topbar()
-render_reviewer_summary()
+def start_scenario(key):
+    global r
+    old = r
+    runner = ScenarioRunner()
+    st.session_state.scenario_runner = runner
 
-if st.session_state.comware_page == "장비 설정":
-    render_settings_page()
-elif st.session_state.comware_page == "비교 결과":
-    render_compare_page()
-else:
-    render_logs_page()
+    def update(current):
+        render_timeline(current, timeline_slot)
+        render_business_trace(current.runtime, public_trace_slot)
 
+    try:
+        runner.play(key, update)
+    except Exception as exc:
+        st.error(f"검증을 완료하지 못했습니다: {exc}")
+    r = runner.runtime
+    st.session_state.runtime = r
+    old.close()
+
+
+st.title("Network Change Validator")
+st.write(
+    "네트워크 작업 전·후 상태를 자동 비교해 작업이 정상적으로 끝났는지 확인합니다."
+)
 st.caption(
-    "Public Web Edition · production Preflight / SnapshotStore / DiffEngine / "
-    "ExpectedChangeRule / ReportWriter 재사용 · 실제 SSH/계정 입력 없음"
+    "HPE Comware Change Validator · Public Web Edition · 비식별 합성 데이터 · 실제 장비 변경 없음"
 )
-st.link_button(
-    "GitHub Source",
-    "https://github.com/sebia1993/hpe-comware-change-validator",
-)
+controls = st.container()
+timeline_slot = st.empty()
+result_slot = st.container()
+public_trace_slot = st.empty()
+findings_slot = st.container()
+with controls:
+    chosen = None
+    if st.button(
+        "▶ 대표 네트워크 작업 검증 보기", type="primary", use_container_width=True
+    ):
+        chosen = "representative"
+    st.caption("다른 시나리오")
+    for col, (key, label) in zip(st.columns(3), list(SCENARIOS.items())[1:]):
+        if col.button(label, use_container_width=True):
+            chosen = key
+    st.write(
+        "실제 운영에서는 네트워크 작업 전후에 여러 장비의 상태를 사람이 다시 확인해야 합니다. 이 프로그램은 작업 전 상태를 기준으로 저장하고 작업 후 상태와 자동 비교해 확인이 필요한 항목을 보여줍니다."
+    )
+    if chosen:
+        start_scenario(chosen)
 
-# Bind UI notifications only for the active Streamlit script run.
+runner = st.session_state.get("scenario_runner")
+render_timeline(runner, timeline_slot)
+with result_slot:
+    render_result(r, st)
+    if r.html:
+        actions = st.columns(2)
+        actions[0].download_button(
+            "HTML 보고서 다운로드",
+            r.html,
+            "diff_report.html",
+            "text/html",
+            use_container_width=True,
+        )
+        actions[1].download_button(
+            "ZIP 다운로드",
+            r.zip_bytes,
+            "change-validation-share.zip",
+            "application/zip",
+            use_container_width=True,
+        )
+        with st.expander("HTML 보고서 보기"):
+            components.html(r.html, height=650, scrolling=True)
+render_business_trace(r, public_trace_slot)
+with findings_slot:
+    render_findings(r, st)
+with st.expander("기술 상세 / 직접 조작", expanded=False):
+    st.caption(
+        "기존 전문가용 화면 · 직접 수집/비교를 실행하면 시나리오 기록을 닫고 현재 작업을 이어갑니다."
+    )
+    render_sidebar()
+    render_topbar()
+    if st.session_state.comware_page == "장비 설정":
+        render_settings_page()
+    elif st.session_state.comware_page == "비교 결과":
+        render_compare_page()
+    else:
+        render_logs_page()
+
+st.caption("Public Web Edition · 실제 장비 접속 없이 공개 합성 입력으로 검증합니다.")
+st.link_button(
+    "GitHub Source", "https://github.com/sebia1993/hpe-comware-change-validator"
+)
 r.execution.on_change = None
