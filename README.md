@@ -4,6 +4,16 @@
 
 > **30초 요약:** 네트워크 작업 전 상태를 기준 Snapshot으로 저장하고 작업 후 결과와 자동 비교해 **계획된 변화 / 비계획 변화 / 위험 신호 / 확인 불가**를 구분하는 변경 검증 도구입니다.
 
+
+## 비전공 검토자를 위한 프로젝트 설명
+
+| 구분 | 설명 |
+|---|---|
+| **프로젝트 목적** | 네트워크 작업 **전과 후의 상태를 자동으로 비교**해 의도한 변경, 예상하지 못한 이상, 확인할 수 없는 항목을 구분합니다. |
+| **이 데모에서 보여주는 것** | **작업 전 상태 저장 → 작업 후 상태 저장 → 자동 비교 → 위험 항목 분류 → 변경 전·후 근거와 보고서 생성**까지의 전체 검증 과정을 보여줍니다. |
+| **핵심 자동화** | 사람이 수십 개 상태를 눈으로 비교하던 작업을 Before/After 데이터 비교와 규칙 기반 분류로 자동화합니다. |
+
+
 Live Demo에서는 **샘플 변경 검증 1-click**으로 Pre-Change → 작업 중 Snapshot → 자동 Diff까지 즉시 확인할 수 있습니다. 공개 환경에서는 합성 CLI만 사용하지만 SnapshotStore, DiffEngine, ExpectedChangeRule과 ReportWriter는 production 코드를 재사용합니다.
 
 > **Public Web Edition:** 실제 Tk `백본 상태 추적 콘솔`의 좌측 Navigation(`장비 설정 / 비교 결과 / 작업 로그`), Topbar 상태, 접속·대상 장비·상태 수집, Snapshot 비교, 변경 상세, Raw Before/After, 보고서/공유 흐름을 브라우저로 옮겼습니다. 공개 URL에서는 실제 SSH 대신 합성 CommandResult만 공급하며 Preflight·SnapshotStore·DiffEngine·ReportWriter는 production 코드를 재사용합니다.
