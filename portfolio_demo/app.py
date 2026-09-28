@@ -13,6 +13,8 @@ from core.workflow import CUSTOM_STAGE, WORK_STAGE_NAMES
 from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 
+from portfolio_demo.execution_trace import render_trace
+
 st.set_page_config(
     page_title="백본 상태 추적 콘솔 · Public Web Edition",
     page_icon="🔎",
@@ -375,9 +377,10 @@ def classification_metrics() -> dict[str, int]:
 
 def run_sample_validation() -> None:
     demo = DemoRuntime()
-    demo.check()
-    demo.capture("작업 전")
-    demo.capture("백본3 OFF 중")
+    demo.execution.on_change = lambda: render_trace(demo.execution, trace_slot)
+    with demo.execution.operation("작업 전 저장 → 작업 후 저장 → 자동 비교"):
+        demo.capture("작업 전")
+        demo.capture("백본3 OFF 중")
     st.session_state.runtime = demo
     st.session_state.comware_page = "비교 결과"
     st.rerun()
@@ -604,6 +607,9 @@ def render_logs_page() -> None:
 
 render_sidebar()
 render_topbar()
+trace_slot = st.empty()
+r.execution.on_change = lambda: render_trace(r.execution, trace_slot)
+render_trace(r.execution, trace_slot)
 
 if st.session_state.comware_page == "장비 설정":
     render_settings_page()
@@ -620,3 +626,6 @@ st.link_button(
     "GitHub Source",
     "https://github.com/sebia1993/hpe-comware-change-validator",
 )
+
+# Bind UI notifications only for the active Streamlit script run.
+r.execution.on_change = None
