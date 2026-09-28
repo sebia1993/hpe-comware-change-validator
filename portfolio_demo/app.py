@@ -169,12 +169,9 @@ def render_sidebar() -> None:
                 st.session_state.comware_page
             ),
             format_func=lambda value: {
-                "장비 설정": "장비 설정
-접속 계정/대상 장비/상태 수집",
-                "비교 결과": "비교 결과
-기준/대상 변경점",
-                "작업 로그": "작업 로그
-실행 이력과 오류",
+                "장비 설정": "장비 설정 · 접속 계정/대상 장비/상태 수집",
+                "비교 결과": "비교 결과 · 기준/대상 변경점",
+                "작업 로그": "작업 로그 · 실행 이력과 오류",
             }[value],
             label_visibility="collapsed",
         )
