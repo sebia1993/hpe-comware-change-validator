@@ -31,6 +31,13 @@ st.markdown(
     .step-no {font-size:.72rem; color:#7da7ff; font-weight:800;}
     .step-title {font-size:.95rem; font-weight:760; margin-top:.15rem;}
     .step-state {font-size:.76rem; color:#8494a8; margin-top:.25rem;}
+    .explain-card {
+        border:1px solid rgba(120,145,175,.24); border-radius:12px;
+        padding:.85rem 1rem; background:rgba(18,27,41,.5); min-height:118px;
+    }
+    .explain-label {font-size:.72rem; color:#7da7ff; font-weight:800; letter-spacing:.04em;}
+    .explain-title {font-size:1rem; font-weight:780; margin:.2rem 0 .35rem;}
+    .explain-copy {font-size:.86rem; color:#91a0b3; line-height:1.45;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -42,10 +49,17 @@ r = st.session_state.runtime
 
 
 def render_header() -> None:
-    st.markdown('<div class="product-kicker">HPE COMWARE CHANGE OPERATIONS</div>', unsafe_allow_html=True)
-    st.markdown('<div class="product-title">Change Validator</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="product-sub">작업 전·후 Snapshot을 구조화 비교해 Interface, LACP, OSPF, VRRP와 리소스 변화를 검증합니다.</div>',
+        '<div class="product-kicker">NETWORK CHANGE VALIDATION</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="product-title">네트워크 변경 전·후 검증 도구</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="product-sub">네트워크 작업 전 상태를 기준으로 저장하고 작업 후와 자동 비교해 '
+        '계획된 변화, 위험 신호와 수집 실패를 구분합니다.</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -53,6 +67,102 @@ def render_header() -> None:
         '<span class="demo-badge">SYNTHETIC CLI</span>'
         '<span class="demo-badge">READ ONLY</span>',
         unsafe_allow_html=True,
+    )
+
+
+
+def render_explainer() -> None:
+    st.markdown("### 이 도구는 무엇을 해결하나요?")
+    cols = st.columns(3)
+    cards = (
+        (
+            "현업 문제",
+            "작업 후 수십 개 상태를 재확인",
+            "백본 작업 뒤 Interface, LACP, OSPF, VRRP, CPU 같은 상태를 사람이 다시 비교하면 "
+            "누락과 판단 편차가 생길 수 있습니다.",
+        ),
+        (
+            "자동화 방식",
+            "Pre / Post Snapshot 자동 비교",
+            "작업 전 상태를 기준 Snapshot으로 저장하고, 작업 후 동일 장비·명령 결과를 구조화해 "
+            "무엇이 바뀌었는지 자동으로 찾습니다.",
+        ),
+        (
+            "운영 결과",
+            "위험 / 계획 / 확인 불가 분류",
+            "변화를 단순 diff로 끝내지 않고 Critical, Warning, Expected, Unexpected, Unknown으로 "
+            "나눠 우선 확인 대상을 보여줍니다.",
+        ),
+    )
+    for col, (label, title, copy) in zip(cols, cards):
+        col.markdown(
+            '<div class="explain-card">'
+            f'<div class="explain-label">{label}</div>'
+            f'<div class="explain-title">{title}</div>'
+            f'<div class="explain-copy">{copy}</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    st.info(
+        "예시: 백본 장비 OFF 작업 후 링크·LACP·OSPF·VRRP 변화가 계획과 일치하는지, "
+        "수집 실패 때문에 확인할 수 없는 항목은 없는지를 작업 전 상태와 자동 비교합니다."
+    )
+    c = st.columns([1.45, 3.55])
+    if c[0].button(
+        "▶ 샘플 변경 검증 1-click",
+        type="primary",
+        use_container_width=True,
+    ):
+        demo = DemoRuntime()
+        demo.check()
+        demo.capture("작업 전")
+        demo.capture("백본3 OFF 중")
+        st.session_state.runtime = demo
+        st.rerun()
+    c[1].caption(
+        "한 번 클릭하면 Pre-Change Snapshot → 작업 중 Snapshot → 자동 비교까지 실행해 "
+        "대표 결과를 바로 보여줍니다."
+    )
+
+    with st.expander("용어를 쉽게 보기", expanded=False):
+        st.write("**Snapshot**: 특정 시점의 장비 상태 명령 결과를 묶어 저장한 기준 자료")
+        st.write("**Expected**: 변화가 계획과 일치한다는 뜻이며, Critical/Warning 등급 자체를 숨기지 않음")
+        st.write("**Unexpected**: 작업 계획에 없던 변화로 추가 확인이 필요한 항목")
+        st.write("**Unknown**: CLI 수집 실패 등으로 정상/이상을 판단할 근거가 부족한 항목")
+
+
+def result_counts() -> dict[str, int]:
+    if not r.summary:
+        return {}
+    labels = ["Critical", "Warning", "Expected", "Unexpected", "Unknown", "Unchanged"]
+    return {
+        key: sum(
+            row["Severity" if key in ("Critical", "Warning") else "Classification"] == key
+            for row in r.rows
+        )
+        for key in labels
+    }
+
+
+def render_plain_summary() -> None:
+    counts = result_counts()
+    if not counts:
+        return
+    risky = counts["Critical"] + counts["Warning"]
+    st.markdown("### 이번 비교에서 무엇을 알 수 있나요?")
+    if risky:
+        st.warning(
+            f"결론: 작업 전 대비 긴급/주의 항목 {risky}건이 확인됐습니다. "
+            f"계획된 변화 {counts['Expected']}건, 비계획 변화 {counts['Unexpected']}건, "
+            f"수집 부족으로 확인 불가 {counts['Unknown']}건입니다."
+        )
+    else:
+        st.success(
+            f"결론: 작업 전 대비 긴급/주의 변화가 확인되지 않았습니다. "
+            f"계획된 변화 {counts['Expected']}건, 확인 불가 {counts['Unknown']}건입니다."
+        )
+    st.caption(
+        "상세 근거는 아래 3. Validation 탭에서 Before / After와 함께 확인할 수 있습니다."
     )
 
 
@@ -222,13 +332,7 @@ def render_results(planned_off: bool, planned_vlan: bool) -> None:
         st.warning("계획 변경 설정이 바뀌었습니다. ‘선택 항목 비교’를 눌러 재분석하세요.")
 
     labels = ["Critical", "Warning", "Expected", "Unexpected", "Unknown", "Unchanged"]
-    counts = {
-        k: sum(
-            row["Severity" if k in ("Critical", "Warning") else "Classification"] == k
-            for row in r.rows
-        )
-        for k in labels
-    }
+    counts = result_counts()
     st.write(
         "**Validation Status:** "
         + ("확인 불가 포함" if counts["Unknown"] else "관측 완료")
@@ -319,8 +423,10 @@ def render_logs() -> None:
 
 
 render_header()
+render_explainer()
 render_sidebar()
 render_workflow_strip()
+render_plain_summary()
 
 preflight, snapshots, results, reports, logs = st.tabs(
     ["1. Preflight", "2. Snapshot", "3. Validation", "4. Report", "작업 로그"]
