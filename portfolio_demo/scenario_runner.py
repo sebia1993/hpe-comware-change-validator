@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from time import perf_counter
 
+from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 
 SCENARIOS = {
@@ -215,8 +216,9 @@ class ScenarioRunner:
         self.start(key)
         if on_change:
             on_change(self)
-        while not self.run.completed and not self.run.error:
-            self.advance(on_change)
+        with self.runtime.execution.operation(self.run.name):
+            while not self.run.completed and not self.run.error:
+                self.advance(on_change)
         return self.run
 
     def _run_preflight(self, step):
@@ -225,10 +227,8 @@ class ScenarioRunner:
             raise ValueError("설정 점검에 실패해 검증을 중단했습니다.")
         step.status = "warning" if result.warning_count else "success"
         step.result = (
-            f"대상 {len(self.runtime.preflight.devices)}대 · "
+            f"대상 {len(DEVICES)}대 · 읽기 전용 명령 {len(COMMANDS)}종 · "
             f"Error {result.error_count} · Warning {result.warning_count}"
-            if hasattr(self.runtime.preflight, "devices")
-            else f"Error {result.error_count} · Warning {result.warning_count}"
         )
 
     def _snapshot_result(self, index):
