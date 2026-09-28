@@ -134,6 +134,10 @@ class DemoTests(unittest.TestCase):
         self.assertFalse(root.exists())
         self.assertFalse(app.session_state.runtime.catalog)
         self.assertFalse(app.exception)
+        button("▶ 샘플 변경 검증 1-click").click().run()
+        self.assertEqual(app.session_state.runtime.pair, (0, 1))
+        self.assertIsNotNone(app.session_state.runtime.summary)
+        self.assertFalse(app.exception)
 
 
 if __name__ == "__main__":
