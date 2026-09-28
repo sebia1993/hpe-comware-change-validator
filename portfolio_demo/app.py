@@ -379,7 +379,7 @@ def render_collection_section() -> None:
         )
         if cols[2].button("설정 점검", use_container_width=True):
             st.session_state.pop("scenario_runner", None)
-    st.session_state.pop("scenario_autorun", None)
+            st.session_state.pop("scenario_autorun", None)
             r.check()
             st.rerun()
 
@@ -546,7 +546,7 @@ def render_compare_controls() -> tuple[bool, bool]:
         ):
             try:
                 st.session_state.pop("scenario_runner", None)
-    st.session_state.pop("scenario_autorun", None)
+                st.session_state.pop("scenario_autorun", None)
                 r.compare(base, target, planned_off, planned_vlan)
                 st.rerun()
             except ValueError as exc:
