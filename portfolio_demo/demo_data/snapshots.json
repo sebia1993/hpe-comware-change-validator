@@ -1,76 +1,163 @@
 {
   "commands": {
+    "system_clock": [
+      "display clock",
+      "basic",
+      "Clock: 2026-09-29 15:00:00"
+    ],
+    "system_version": [
+      "display version",
+      "basic",
+      "HPE Comware Software, Version 7.1.070\nBoot image: flash:/system.bin\nUptime: 120 days"
+    ],
+    "device_status": [
+      "display device",
+      "hardware",
+      "Slot 1 State: Normal\nModule 1 State: Normal"
+    ],
+    "power_status": [
+      "display power",
+      "hardware",
+      "Power 1 State: Normal\nPower 2 State: Normal"
+    ],
+    "fan_status": [
+      "display fan",
+      "hardware",
+      "Fan 1 State: Normal\nFan 2 State: Normal"
+    ],
+    "environment_status": [
+      "display environment",
+      "hardware",
+      "Temperature 32 C State: Normal"
+    ],
+    "alarm_status": [
+      "display alarm",
+      "hardware",
+      "No Alarm"
+    ],
     "interface_brief": [
       "display interface brief",
       "interface",
-      "GE1/0/1 UP\nGE1/0/2 UP"
-    ],
-    "interface_description": [
-      "display interface description",
-      "interface",
-      "GE1/0/1 Description Uplink-A"
+      "GE1/0/1 UP\nGE1/0/2 UP\nGE1/0/3 UP\nGE1/0/4 UP"
     ],
     "link_aggregation_summary": [
       "display link-aggregation summary",
-      "lacp",
-      "Aggregation1 selected ports: 2"
+      "interface",
+      "Aggregation1 selected ports: 2\nAggregation2 selected ports: 2"
     ],
-    "vlan": [
+    "link_aggregation_verbose": [
+      "display link-aggregation verbose",
+      "interface",
+      "Aggregation1 GE1/0/1 Selected\nAggregation1 GE1/0/2 Selected\nAggregation2 GE1/0/3 Selected\nAggregation2 GE1/0/4 Selected"
+    ],
+    "vlan_summary": [
       "display vlan",
-      "vlan",
-      "VLAN ID: 10\nName: Users"
+      "switching",
+      "VLAN ID: 10 Name: Users\nVLAN ID: 30 Name: Server"
     ],
     "stp_brief": [
       "display stp brief",
-      "stp",
-      "Root Bridge: 0000-5e00-5301\nGE1/0/1 FORWARDING"
+      "switching",
+      "Root Bridge: 0000-5e00-5303\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING"
     ],
     "ospf_peer": [
       "display ospf peer",
       "routing",
-      "Neighbor 192.0.2.2 State Full"
+      "Neighbor 192.0.2.4 State Full"
+    ],
+    "ospf_routes": [
+      "display ip routing-table protocol ospf",
+      "routing",
+      "10.20.0.0/16 via 192.0.2.4 Cost 10\n10.30.0.0/16 via 192.0.2.4 Cost 10"
     ],
     "vrrp_status": [
-      "display vrrp verbose",
+      "show vrrp",
       "routing",
       "VRID 1 State Master Priority 110 VIP 192.0.2.254"
     ],
     "cpu_usage": [
       "display cpu-usage",
       "resource",
-      "5 seconds: 10%\n1 minute: 10%\n5 minutes: 10%"
+      "5 seconds: 12%\n1 minute: 11%\n5 minutes: 10%"
     ],
-    "memory": [
+    "memory_usage": [
       "display memory",
       "resource",
-      "FreeRatio: 70%"
+      "FreeRatio: 68%"
     ],
-    "power": [
-      "display power",
-      "hardware",
-      "Power 1 State: Normal"
+    "recent_log": [
+      "display logbuffer",
+      "log",
+      "Info: OSPF neighbors stable\nInfo: All monitored links normal"
     ]
+  },
+  "device_baselines": {
+    "DEMO-BB3": {
+      "ospf_peer": "Neighbor 192.0.2.4 State Full",
+      "ospf_routes": "10.20.0.0/16 via 192.0.2.4 Cost 10\n10.30.0.0/16 via 192.0.2.4 Cost 10",
+      "vrrp_status": "VRID 1 State Master Priority 110 VIP 192.0.2.254",
+      "cpu_usage": "5 seconds: 12%\n1 minute: 11%\n5 minutes: 10%",
+      "memory_usage": "FreeRatio: 68%"
+    },
+    "DEMO-BB4": {
+      "ospf_peer": "Neighbor 192.0.2.3 State Full",
+      "ospf_routes": "10.20.0.0/16 via 192.0.2.3 Cost 10\n10.30.0.0/16 via 192.0.2.3 Cost 10",
+      "vrrp_status": "VRID 1 State Backup Priority 100 VIP 192.0.2.254",
+      "cpu_usage": "5 seconds: 9%\n1 minute: 9%\n5 minutes: 8%",
+      "memory_usage": "FreeRatio: 72%"
+    }
   },
   "scenarios": {
     "no_change": {},
     "expected": {
-      "vlan": "VLAN ID: 10\nName: Users\nVLAN ID: 20\nName: Demo",
-      "interface_description": "GE1/0/1 Description Demo-Uplink"
+      "vlan_summary": "VLAN ID: 10 Name: Users\nVLAN ID: 20 Name: Change-Window\nVLAN ID: 30 Name: Server"
     },
     "unexpected": {
-      "stp_brief": "Root Bridge: 0000-5e00-5302\nGE1/0/1 FORWARDING",
-      "vrrp_status": "VRID 1 State Backup Priority 100 VIP 192.0.2.254"
+      "stp_brief": "Root Bridge: 0000-5e00-5304\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING",
+      "vrrp_status": "VRID 1 State Master Priority 120 VIP 192.0.2.254"
     },
     "critical": {
-      "interface_brief": "GE1/0/1 DOWN\nGE1/0/2 UP",
-      "link_aggregation_summary": "Aggregation1 selected ports: 1",
-      "ospf_peer": "Neighbor 192.0.2.2 State Init",
-      "cpu_usage": "5 seconds: 85%\n1 minute: 80%\n5 minutes: 75%",
-      "memory": "FreeRatio: 20%",
-      "power": "Power 1 State: Fault"
+      "interface_brief": "GE1/0/1 DOWN\nGE1/0/2 UP\nGE1/0/3 UP\nGE1/0/4 UP",
+      "link_aggregation_summary": "Aggregation1 selected ports: 1\nAggregation2 selected ports: 2",
+      "link_aggregation_verbose": "Aggregation1 GE1/0/1 Unselected\nAggregation1 GE1/0/2 Selected\nAggregation2 GE1/0/3 Selected\nAggregation2 GE1/0/4 Selected",
+      "ospf_peer": "Neighbor 192.0.2.3 State Init",
+      "cpu_usage": "5 seconds: 78%\n1 minute: 72%\n5 minutes: 68%",
+      "memory_usage": "FreeRatio: 28%",
+      "power_status": "Power 1 State: Fault\nPower 2 State: Normal"
+    },
+    "representative": {
+      "DEMO-BB3": {
+        "cpu_usage": "5 seconds: 78%\n1 minute: 72%\n5 minutes: 68%",
+        "memory_usage": "FreeRatio: 35%",
+        "alarm_status": "Minor Alarm: CPU utilization warning",
+        "recent_log": "Info: OSPF neighbors stable\nWarning: CPU utilization high during change window"
+      },
+      "DEMO-BB4": {
+        "interface_brief": "GE1/0/1 DOWN\nGE1/0/2 UP\nGE1/0/3 UP\nGE1/0/4 UP",
+        "link_aggregation_summary": "Aggregation1 selected ports: 1\nAggregation2 selected ports: 2",
+        "link_aggregation_verbose": "Aggregation1 GE1/0/1 Unselected\nAggregation1 GE1/0/2 Selected\nAggregation2 GE1/0/3 Selected\nAggregation2 GE1/0/4 Selected",
+        "stp_brief": "Root Bridge: 0000-5e00-5304\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING",
+        "ospf_peer": "Neighbor 192.0.2.3 State Init",
+        "ospf_routes": "10.20.0.0/16 via 192.0.2.1 Cost 20\n10.30.0.0/16 via 192.0.2.3 Cost 10",
+        "vrrp_status": "VRID 1 State Master Priority 120 VIP 192.0.2.254",
+        "recent_log": "Info: OSPF neighbors stable\nInterface GE1/0/1 down during validation"
+      }
+    },
+    "unexpected_demo": {
+      "DEMO-BB3": {
+        "cpu_usage": "5 seconds: 85%\n1 minute: 80%\n5 minutes: 75%",
+        "memory_usage": "FreeRatio: 32%"
+      },
+      "DEMO-BB4": {
+        "stp_brief": "Root Bridge: 0000-5e00-5304\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING",
+        "vrrp_status": "VRID 1 State Master Priority 120 VIP 192.0.2.254"
+      }
     },
     "collection_failed": {
-      "ospf_peer": null
+      "DEMO-BB3": {
+        "ospf_peer": null,
+        "ospf_routes": null
+      }
     }
   }
 }
