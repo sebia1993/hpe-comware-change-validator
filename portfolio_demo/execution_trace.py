@@ -30,10 +30,16 @@ class ExecutionTrace:
             self.on_change()
 
     @contextmanager
-    def operation(self, label):
+    def operation(self, label, *, append=False, finalize=True):
+        """Group calls while optionally retaining evidence from earlier phases.
+
+        Incremental callers append each phase in its own balanced context; no
+        context manager or nesting depth remains open between UI reruns.
+        """
         outer = self.depth == 0
         if outer:
-            self.steps = []
+            if not append:
+                self.steps = []
             self.label = label
             self.elapsed_ms = None
             started = perf_counter()
@@ -50,7 +56,8 @@ class ExecutionTrace:
         finally:
             self.depth -= 1
             if outer:
-                self.elapsed_ms = (perf_counter() - started) * 1000
+                if finalize:
+                    self.elapsed_ms = (perf_counter() - started) * 1000
                 self.notify()
 
     def record(self, id, label, status, detail, evidence=None):

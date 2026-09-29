@@ -1,7 +1,9 @@
 """Evaluator stories orchestrate the existing runtime; no manufactured findings."""
 
 from dataclasses import dataclass, field
+from time import perf_counter
 
+from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 
 SCENARIOS = {
@@ -87,6 +89,7 @@ class ScenarioStep:
     description: str
     result: str = "대기"
     status: str = "pending"
+    elapsed_ms: float | None = None
 
 
 @dataclass
@@ -96,147 +99,216 @@ class ScenarioRun:
     steps: list = field(default_factory=list)
     completed: bool = False
     error: str = ""
+    current_index: int = 0
+    started_at: float | None = None
+    elapsed_ms: float | None = None
 
 
 class ScenarioRunner:
     def __init__(self):
         self.runtime = DemoRuntime()
         self.run = None
-        self.post_started = False
+        self.inputs = {}
+        self.planned_vlan = False
 
-    def play(self, key, on_change=None):
+    def start(self, key):
         if key not in SCENARIOS:
             raise ValueError("지원하지 않는 시나리오입니다.")
+        if self.run is not None:
+            self.runtime.close()
+            self.runtime = DemoRuntime()
+        self.inputs = {
+            "vlan": key in ("representative", "normal"),
+            "resource": key in ("representative", "unexpected"),
+            "timeout": key == "failure",
+        }
+        self.planned_vlan = self.inputs["vlan"]
         self.run = ScenarioRun(
             key,
             SCENARIOS[key],
             [
                 ScenarioStep(
-                    "before",
-                    "작업 전 상태 저장",
-                    "장비 상태를 읽고 비교의 기준으로 저장합니다.",
+                    "preflight",
+                    "대상과 읽기 전용 명령 확인",
+                    "검증할 장비와 조회 명령이 안전한 읽기 전용 구성인지 확인합니다.",
                 ),
                 ScenarioStep(
-                    "plan",
-                    "예정된 작업 상태 재현",
-                    "공개 데모의 합성 입력을 선택합니다. 실제 장비를 변경하지 않습니다.",
+                    "before",
+                    "작업 전 상태 수집·저장",
+                    "네트워크 작업 전 상태를 비교 기준 Snapshot으로 저장합니다.",
                 ),
                 ScenarioStep(
                     "after",
-                    "작업 후 상태 재수집",
-                    "같은 장비와 읽기 전용 명령으로 다시 상태를 저장합니다.",
+                    "작업 후 상태 재수집·저장",
+                    "같은 대상과 명령으로 작업 후 상태를 다시 저장합니다.",
                 ),
                 ScenarioStep(
                     "diff",
-                    "작업 전·후 자동 비교",
-                    "저장된 두 상태에서 달라진 항목을 찾습니다.",
+                    "작업 전·후 상태 자동 비교",
+                    "두 Snapshot에서 실제로 달라진 분석 항목을 찾습니다.",
                 ),
                 ScenarioStep(
                     "classify",
-                    "변화 의미 분석",
-                    "등록된 계획과 실제 변화, 정보 부족을 구분합니다.",
+                    "변화 의미와 우선순위 판정",
+                    "계획과 일치하는 변화, 추가 확인 필요, 정보 부족을 구분합니다.",
                 ),
                 ScenarioStep(
                     "report",
-                    "최종 결과와 보고서",
-                    "판단 근거와 공유할 보고서를 준비합니다.",
+                    "결과 보고서 생성",
+                    "판단 근거를 HTML 보고서와 공유 ZIP으로 생성합니다.",
                 ),
             ],
+            started_at=perf_counter(),
         )
-        r = self.runtime
-
-        def update():
-            self._observe()
-            if on_change:
-                on_change(self)
-
-        r.execution.on_change = update
-        try:
-            with r.execution.operation(self.run.name):
-                self.run.steps[0].status = "running"
-                update()
-                if r.check().has_errors:
-                    raise ValueError("설정 점검에 실패해 검증을 중단했습니다.")
-                r.capture("작업 전")
-                inputs = {
-                    "vlan": key in ("representative", "normal"),
-                    "resource": key in ("representative", "unexpected"),
-                    "timeout": key == "failure",
-                }
-                plan = self.run.steps[1]
-                plan.status = "success"
-                plan.result = (
-                    "네트워크 구역·연결 설명 변경을 작업 계획으로 등록했습니다."
-                    if inputs["vlan"]
-                    else "추가 변경을 계획으로 등록하지 않았습니다."
-                )
-                plan.result += (
-                    " 처리 자원 이상 입력을 포함합니다." if inputs["resource"] else ""
-                )
-                plan.result += (
-                    " 일부 정보 수집 실패 입력을 포함합니다."
-                    if inputs["timeout"]
-                    else ""
-                )
-                self.post_started = True
-                self.run.steps[2].status = "running"
-                update()
-                # capture performs the existing automatic compare and ReportWriter path.
-                r.capture(
-                    "사용자 지정", SCENARIOS[key], planned_vlan=inputs["vlan"], **inputs
-                )
-                if not (r.summary and r.html and r.zip_bytes):
-                    raise ValueError("비교 결과 또는 보고서가 준비되지 않았습니다.")
-                self.run.completed = True
-                update()
-        except Exception as exc:
-            self.run.error = str(exc)
-            for step in self.run.steps:
-                if step.status == "running":
-                    step.status, step.result = "failure", "실행 중단: " + str(exc)
-            raise
-        finally:
-            r.execution.on_change = None
-            if on_change:
-                on_change(self)
+        self.run.steps[0].status = "running"
         return self.run
 
-    def _observe(self):
-        r = self.runtime
-        if not self.run:
-            return
-        for index, path in enumerate(r.catalog[:2]):
-            snap = r.store.load_snapshot(path)
-            step = self.run.steps[0 if index == 0 else 2]
-            failed = sum(not result.success for result in snap.results)
-            step.status = "warning" if failed else "success"
-            step.result = (
-                f"장비 {len(snap.devices)}대 · 수집 결과 {len(snap.results)}개 저장 "
-                f"(성공 {len(snap.results) - failed}, 정보 부족 {failed}) · 저장본 #{index + 1}"
-            )
-        if not self.post_started:
-            return
-        for evidence in r.execution.steps:
-            if evidence.id not in ("diff", "classification", "report"):
-                continue
-            step = self.run.steps[
-                {"diff": 3, "classification": 4, "report": 5}[evidence.id]
-            ]
-            if evidence.status == "running":
-                step.status, step.result = "running", "실제 처리 중"
-            elif evidence.id == "diff":
-                step.status = evidence.status
-                step.result = f"저장본 #{evidence.evidence.get('base')} → #{evidence.evidence.get('target')} · {evidence.evidence.get('items')}개 분석 항목 비교"
-            elif evidence.id == "classification":
-                values = evidence.evidence["classification"]
-                step.status = (
-                    "warning"
-                    if values["Unexpected"] or values["Unknown"]
-                    else "success"
-                )
-                step.result = " · ".join(
-                    f"{LABELS[k]} {v}개" for k, v in values.items()
-                )
+    def advance(self, on_change=None):
+        if self.run is None:
+            raise ValueError("시나리오를 먼저 시작하세요.")
+        if self.run.completed or self.run.error:
+            return self.run
+
+        index = self.run.current_index
+        step = self.run.steps[index]
+        step.status = "running"
+        if on_change:
+            on_change(self)
+        started = perf_counter()
+
+        try:
+            with self.runtime.execution.operation(
+                self.run.name, append=True, finalize=False
+            ):
+                if step.id == "preflight":
+                    self._run_preflight(step)
+                elif step.id == "before":
+                    self._run_before(step)
+                elif step.id == "after":
+                    self._run_after(step)
+                elif step.id == "diff":
+                    self._run_diff(step)
+                elif step.id == "classify":
+                    self._run_classification(step)
+                elif step.id == "report":
+                    self._run_report(step)
+                else:
+                    raise ValueError("Unknown scenario step")
+
+            step.elapsed_ms = (perf_counter() - started) * 1000
+            if step.status == "running":
+                step.status = "success"
+            self.run.current_index += 1
+
+            if self.run.current_index >= len(self.run.steps):
+                self.run.completed = True
+                self.run.elapsed_ms = (perf_counter() - self.run.started_at) * 1000
+                self.runtime.execution.elapsed_ms = self.run.elapsed_ms
             else:
-                step.status = evidence.status
-                step.result = f"보고서 {evidence.evidence.get('html_bytes')} bytes · 공유 파일 {evidence.evidence.get('zip_bytes')} bytes 준비"
+                self.run.steps[self.run.current_index].status = "running"
+        except Exception as exc:
+            step.elapsed_ms = (perf_counter() - started) * 1000
+            step.status = "failure"
+            step.result = "실행 중단: " + str(exc)
+            self.run.error = str(exc)
+            self.run.elapsed_ms = (perf_counter() - self.run.started_at) * 1000
+            self.runtime.execution.elapsed_ms = self.run.elapsed_ms
+            raise
+        finally:
+            if on_change:
+                on_change(self)
+
+        return self.run
+
+    def play(self, key, on_change=None):
+        self.start(key)
+        if on_change:
+            on_change(self)
+        while not self.run.completed and not self.run.error:
+            self.advance(on_change)
+        return self.run
+
+    def _run_preflight(self, step):
+        result = self.runtime.check()
+        if result.has_errors:
+            raise ValueError("설정 점검에 실패해 검증을 중단했습니다.")
+        step.status = "warning" if result.warning_count else "success"
+        step.result = (
+            f"대상 {len(DEVICES)}대 · 읽기 전용 명령 {len(COMMANDS)}종 · "
+            f"Error {result.error_count} · Warning {result.warning_count}"
+        )
+
+    def _snapshot_result(self, index):
+        snap = self.runtime.store.load_snapshot(self.runtime.catalog[index])
+        failed = sum(not result.success for result in snap.results)
+        return (
+            f"장비 {len(snap.devices)}대 · 수집 결과 {len(snap.results)}개 저장 "
+            f"(성공 {len(snap.results) - failed}, 정보 부족 {failed}) · "
+            f"Snapshot #{index + 1}",
+            failed,
+        )
+
+    def _run_before(self, step):
+        index = self.runtime.capture(
+            "작업 전",
+            check_preflight=False,
+            auto_compare=False,
+        )
+        step.result, failed = self._snapshot_result(index)
+        step.status = "warning" if failed else "success"
+
+    def _run_after(self, step):
+        index = self.runtime.capture(
+            "사용자 지정",
+            SCENARIOS[self.run.key],
+            planned_vlan=self.planned_vlan,
+            check_preflight=False,
+            auto_compare=False,
+            **self.inputs,
+        )
+        step.result, failed = self._snapshot_result(index)
+        if self.inputs["vlan"]:
+            step.result += " · 네트워크 구역/연결 설명 변화 포함"
+        if self.inputs["resource"]:
+            step.result += " · 처리 자원 변화 포함"
+        if self.inputs["timeout"]:
+            step.result += " · 일부 정보 수집 실패 포함"
+        step.status = "warning" if failed else "success"
+
+    def _run_diff(self, step):
+        summary = self.runtime.prepare_comparison(
+            0,
+            1,
+            False,
+            self.planned_vlan,
+            automatic=True,
+        )
+        step.result = f"Snapshot #1 → #2 · {len(summary.items)}개 분석 항목 비교"
+        step.status = "success"
+
+    def _run_classification(self, step):
+        self.runtime.classify_pending_comparison()
+        values = counts(self.runtime)
+        severities = {
+            key: sum(item.severity == key for item in self.runtime.summary.items)
+            for key in ("Critical", "Warning", "Info", "Unknown")
+        }
+        step.result = " · ".join(f"{LABELS[key]} {value}개" for key, value in values.items())
+        step.status = (
+            "warning"
+            if values["Unexpected"]
+            or values["Unknown"]
+            or severities["Critical"]
+            or severities["Warning"]
+            else "success"
+        )
+
+    def _run_report(self, step):
+        self.runtime.report_pending_comparison()
+        if not (self.runtime.html and self.runtime.zip_bytes):
+            raise ValueError("보고서 생성 결과가 준비되지 않았습니다.")
+        step.result = (
+            f"HTML {len(self.runtime.html.encode('utf-8'))} bytes · "
+            f"공유 ZIP {len(self.runtime.zip_bytes)} bytes"
+        )
+        step.status = "success"
