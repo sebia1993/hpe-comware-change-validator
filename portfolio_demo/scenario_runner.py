@@ -114,6 +114,9 @@ class ScenarioRunner:
     def start(self, key):
         if key not in SCENARIOS:
             raise ValueError("지원하지 않는 시나리오입니다.")
+        if self.run is not None:
+            self.runtime.close()
+            self.runtime = DemoRuntime()
         self.inputs = {
             "vlan": key in ("representative", "normal"),
             "resource": key in ("representative", "unexpected"),
@@ -174,20 +177,23 @@ class ScenarioRunner:
         started = perf_counter()
 
         try:
-            if step.id == "preflight":
-                self._run_preflight(step)
-            elif step.id == "before":
-                self._run_before(step)
-            elif step.id == "after":
-                self._run_after(step)
-            elif step.id == "diff":
-                self._run_diff(step)
-            elif step.id == "classify":
-                self._run_classification(step)
-            elif step.id == "report":
-                self._run_report(step)
-            else:
-                raise ValueError("Unknown scenario step")
+            with self.runtime.execution.operation(
+                self.run.name, append=True, finalize=False
+            ):
+                if step.id == "preflight":
+                    self._run_preflight(step)
+                elif step.id == "before":
+                    self._run_before(step)
+                elif step.id == "after":
+                    self._run_after(step)
+                elif step.id == "diff":
+                    self._run_diff(step)
+                elif step.id == "classify":
+                    self._run_classification(step)
+                elif step.id == "report":
+                    self._run_report(step)
+                else:
+                    raise ValueError("Unknown scenario step")
 
             step.elapsed_ms = (perf_counter() - started) * 1000
             if step.status == "running":
@@ -197,6 +203,7 @@ class ScenarioRunner:
             if self.run.current_index >= len(self.run.steps):
                 self.run.completed = True
                 self.run.elapsed_ms = (perf_counter() - self.run.started_at) * 1000
+                self.runtime.execution.elapsed_ms = self.run.elapsed_ms
             else:
                 self.run.steps[self.run.current_index].status = "running"
         except Exception as exc:
@@ -205,6 +212,7 @@ class ScenarioRunner:
             step.result = "실행 중단: " + str(exc)
             self.run.error = str(exc)
             self.run.elapsed_ms = (perf_counter() - self.run.started_at) * 1000
+            self.runtime.execution.elapsed_ms = self.run.elapsed_ms
             raise
         finally:
             if on_change:
@@ -216,9 +224,8 @@ class ScenarioRunner:
         self.start(key)
         if on_change:
             on_change(self)
-        with self.runtime.execution.operation(self.run.name):
-            while not self.run.completed and not self.run.error:
-                self.advance(on_change)
+        while not self.run.completed and not self.run.error:
+            self.advance(on_change)
         return self.run
 
     def _run_preflight(self, step):

@@ -744,6 +744,7 @@ st.caption(
 )
 render_reviewer_summary()
 controls = st.container()
+status_slot = st.container(key="scenario-status")
 timeline_slot = GuidedSlot(
     st.empty(), lambda: getattr(st.session_state.get("scenario_runner"), "run", None)
 )
@@ -769,7 +770,7 @@ with controls:
         start_scenario(chosen)
 
 runner = st.session_state.get("scenario_runner")
-render_run_status(runner, st)
+render_run_status(runner, status_slot)
 render_timeline(runner, timeline_slot)
 with result_slot:
     render_result(r, st)

@@ -48,7 +48,8 @@
    root.querySelector('[data-follow]').textContent = result ? '결과 보기' : '현재 단계 따라가기';
  }
  function move() {
-   root.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+   const target = document.querySelector('.st-key-scenario-status') || root;
+   target.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
    root.querySelector('h3').focus({preventScroll:true});
  }
  select.addEventListener('change',() => {state.follow=false;state.selected=Number(select.value);paint();});

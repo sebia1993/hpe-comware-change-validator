@@ -97,6 +97,36 @@ class DemoTests(unittest.TestCase):
                 <= {x["Event"] for x in r.logs}
             )
 
+    def test_report_bundle_failure_clears_previous_downloads(self):
+        r = self.r
+        r.capture("작업 전")
+        r.capture("사용자 지정", "VLAN rollout", vlan=True, planned_vlan=True)
+        for repeat in ("report", "compare"):
+            with self.subTest(repeat=repeat):
+                self.assertTrue(r.html and r.zip_bytes)
+                report_count = sum(log["Event"] == "Report Generated" for log in r.logs)
+                with patch(
+                    "portfolio_demo.runtime.create_share_report_bundle",
+                    side_effect=OSError("archive blocked"),
+                ):
+                    with self.assertRaisesRegex(OSError, "archive blocked"):
+                        if repeat == "report":
+                            r.report_pending_comparison()
+                        else:
+                            r.compare(0, 1, planned_vlan=True)
+                self.assertFalse(r.html)
+                self.assertFalse(r.zip_bytes)
+                report_steps = [s for s in r.execution.steps if s.id == "report"]
+                self.assertEqual(report_steps[-1].status, "failure")
+                self.assertFalse(report_steps[-1].evidence)
+                self.assertEqual(
+                    sum(log["Event"] == "Report Generated" for log in r.logs),
+                    report_count,
+                )
+                self.assertTrue(r.rows)
+                r.compare(0, 1, planned_vlan=True)
+                self.assertTrue(r.html and r.zip_bytes)
+
     def test_isolation_bounds_and_cleanup(self):
         other = DemoRuntime()
         self.addCleanup(other.close)
@@ -200,7 +230,10 @@ class DemoTests(unittest.TestCase):
 
 def finish_autorun(app):
     for _ in range(16):
-        if not app.session_state.get("scenario_autorun", False):
+        if (
+            "scenario_autorun" not in app.session_state
+            or not app.session_state["scenario_autorun"]
+        ):
             return app
         app.run()
     raise AssertionError("scenario autorun did not complete")
@@ -266,27 +299,130 @@ class ScenarioTests(unittest.TestCase):
 
     def test_state_machine_advances_one_real_phase_at_a_time(self):
         runner = ScenarioRunner()
-        self.addCleanup(runner.runtime.close)
+        r = runner.runtime
+        self.addCleanup(r.close)
         run = runner.start("representative")
         self.assertEqual(run.current_index, 0)
         self.assertEqual(run.steps[0].status, "running")
+        self.assertFalse(r.catalog)
+        self.assertFalse(r.execution.steps)
 
         expected = ("preflight", "before", "after", "diff", "classify", "report")
-        for index, step_id in enumerate(expected):
-            self.assertEqual(run.steps[index].id, step_id)
-            runner.advance()
-            self.assertIn(run.steps[index].status, ("success", "warning"))
-            self.assertIsNotNone(run.steps[index].elapsed_ms)
-            if index + 1 < len(expected):
-                self.assertEqual(run.current_index, index + 1)
-                self.assertEqual(run.steps[index + 1].status, "running")
+        trace_ids = []
+        with patch("socket.create_connection", side_effect=AssertionError("No network")):
+            for index, step_id in enumerate(expected):
+                self.assertEqual(run.steps[index].id, step_id)
+                runner.advance()
+                trace_ids.extend(
+                    ["collect", "snapshot"]
+                    if step_id in ("before", "after")
+                    else ["classification" if step_id == "classify" else step_id]
+                )
+                self.assertEqual([s.id for s in r.execution.steps], trace_ids)
+                self.assertEqual(r.execution.depth, 0)
+                self.assertIn(run.steps[index].status, ("success", "warning"))
+                self.assertIsNotNone(run.steps[index].elapsed_ms)
+                self.assertEqual(len(r.catalog), min(index, 2))
+                self.assertEqual(r.pending_compare is not None, index >= 3)
+                self.assertEqual(r.summary is not None, index >= 4)
+                self.assertEqual(bool(r.html and r.zip_bytes), index == 5)
+                if index + 1 < len(expected):
+                    self.assertEqual(run.current_index, index + 1)
+                    self.assertEqual(run.steps[index + 1].status, "running")
+                    self.assertIsNone(r.execution.elapsed_ms)
 
         self.assertTrue(run.completed)
         self.assertEqual(run.current_index, 6)
-        self.assertIsNotNone(run.elapsed_ms)
-        self.assertEqual(runner.runtime.pair, (0, 1))
-        self.assertTrue(runner.runtime.html)
-        self.assertTrue(runner.runtime.zip_bytes)
+        self.assertEqual(r.execution.elapsed_ms, run.elapsed_ms)
+        self.assertEqual(r.execution.label, run.name)
+        self.assertEqual(
+            [s.evidence["snapshot_id"] for s in r.execution.steps if s.id == "snapshot"],
+            [1, 2],
+        )
+        self.assertEqual(r.pair, (0, 1))
+        retained = list(r.execution.steps)
+        runner.advance()
+        self.assertEqual(r.execution.steps, retained)
+        # A later direct operation is independent of the completed scenario.
+        r.check()
+        self.assertEqual([s.id for s in r.execution.steps], ["preflight"])
+
+    def test_incremental_failure_retains_evidence_and_restart_is_clean(self):
+        runner = ScenarioRunner()
+        self.addCleanup(lambda: runner.runtime.close())
+        for failed_phase in (1, 5):
+            with self.subTest(failed_phase=failed_phase):
+                runner.start("representative")
+                r = runner.runtime
+                for _ in range(failed_phase):
+                    runner.advance()
+                retained = list(r.execution.steps)
+                method = "capture" if failed_phase == 1 else "report_pending_comparison"
+                with patch.object(r, method, side_effect=ValueError("phase blocked")):
+                    with self.assertRaisesRegex(ValueError, "phase blocked"):
+                        runner.advance()
+                self.assertFalse(runner.run.completed)
+                self.assertEqual(runner.run.steps[failed_phase].status, "failure")
+                self.assertEqual(r.execution.steps[:-1], retained)
+                self.assertEqual(r.execution.steps[-1].id, "execution_error")
+                self.assertEqual(r.execution.steps[-1].status, "failure")
+                self.assertEqual(r.execution.depth, 0)
+                self.assertIsNotNone(r.execution.elapsed_ms)
+                self.assertFalse(r.html or r.zip_bytes)
+                failed_trace = list(r.execution.steps)
+                runner.advance()
+                self.assertEqual(r.execution.steps, failed_trace)
+                # Failure releases trace nesting before an independent action.
+                r.check()
+                self.assertEqual([s.id for s in r.execution.steps], ["preflight"])
+                old_root = r.root
+                runner.start("normal")
+                self.assertFalse(old_root.exists())
+                self.assertFalse(runner.runtime.catalog)
+                self.assertFalse(runner.runtime.rows)
+                self.assertFalse(runner.runtime.execution.steps)
+                for _ in range(6):
+                    runner.advance()
+                self.assertTrue(runner.run.completed)
+                self.assertEqual(runner.runtime.pair, (0, 1))
+                self.assertEqual(counts(runner.runtime)["Unexpected"], 0)
+                self.assertEqual(
+                    [
+                        s.evidence["snapshot_id"]
+                        for s in runner.runtime.execution.steps
+                        if s.id == "snapshot"
+                    ],
+                    [1, 2],
+                )
+
+    def test_incremental_report_bundle_failure_exposes_no_downloads(self):
+        runner = ScenarioRunner()
+        self.addCleanup(runner.runtime.close)
+        runner.start("normal")
+        for _ in range(5):
+            runner.advance()
+        r = runner.runtime
+        self.assertTrue(r.rows)
+        self.assertEqual(runner.run.current_index, 5)
+        with patch(
+            "portfolio_demo.runtime.create_share_report_bundle",
+            side_effect=OSError("archive blocked"),
+        ):
+            with self.assertRaisesRegex(OSError, "archive blocked"):
+                runner.advance()
+        self.assertFalse(runner.run.completed)
+        self.assertEqual(runner.run.error, "archive blocked")
+        self.assertEqual(runner.run.steps[5].status, "failure")
+        self.assertFalse(r.html)
+        self.assertFalse(r.zip_bytes)
+        report = next(s for s in r.execution.steps if s.id == "report")
+        self.assertEqual(report.status, "failure")
+        self.assertEqual(report.detail, "OSError")
+        self.assertFalse(report.evidence)
+        self.assertEqual(r.execution.steps[-1].id, "execution_error")
+        self.assertTrue(r.rows)
+        self.assertIsNotNone(r.execution.elapsed_ms)
+        self.assertEqual(r.execution.depth, 0)
 
     def test_normal_has_only_planned_or_unchanged_results(self):
         r = self.runner("normal").runtime
@@ -398,6 +534,13 @@ class ScenarioTests(unittest.TestCase):
         r = app.session_state.runtime
         self.addCleanup(r.close)
         self.assertTrue(app.session_state.scenario_runner.run.completed)
+        self.assertTrue(any("COMPLETED" in item.value for item in app.success))
+        self.assertEqual(
+            [s.evidence["snapshot_id"] for s in r.execution.steps if s.id == "snapshot"],
+            [1, 2],
+        )
+        self.assertEqual(r.execution.steps[0].id, "preflight")
+        self.assertEqual(r.execution.steps[-1].id, "report")
         metrics = {m.label: m.value for m in app.metric}
         self.assertEqual(metrics["작업 계획과 일치"], str(counts(r)["Expected"]))
         self.assertEqual(metrics["추가 확인 필요"], str(counts(r)["Unexpected"]))

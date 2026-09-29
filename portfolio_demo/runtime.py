@@ -391,6 +391,8 @@ class DemoRuntime:
         return self.rows
 
     def make_report(self, bp, tp):
+        # Publish downloads only when both report artifacts are ready.
+        self.html, self.zip_bytes = "", b""
         with self.execution.step("report", "ReportWriter · HTML / Share ZIP") as step:
             report_dir = self.root / "comparison"
             report_dir.mkdir(exist_ok=True)
@@ -428,7 +430,6 @@ class DemoRuntime:
                 html = html.replace(escape(value), replacement).replace(
                     value, replacement
                 )
-            self.html = html
             report.write_text(html, encoding="utf-8")
             docs = self.root / "empty-docs"
             docs.mkdir(exist_ok=True)
@@ -436,7 +437,8 @@ class DemoRuntime:
             for old in report_dir.glob("*.zip"):
                 old.unlink()
             bundle = create_share_report_bundle(report_dir, docs_dir=docs)
-            self.zip_bytes = bundle.read_bytes()
+            zip_bytes = bundle.read_bytes()
+            self.html, self.zip_bytes = html, zip_bytes
             self.log("Report Generated", "HTML / Share ZIP")
             step.detail = f"HTML {len(self.html.encode('utf-8'))} bytes · Share ZIP {len(self.zip_bytes)} bytes 생성"
             step.evidence = {
