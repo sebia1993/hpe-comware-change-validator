@@ -885,17 +885,34 @@ def find_memory_free_ratio(lines: list[tuple[int, str]]) -> tuple[int, float, st
             return line_no, float(same_line.group(1)), line
 
     header_index: int | None = None
+    header_width: int | None = None
     for line_no, line in lines:
         tokens = split_status_tokens(line)
         if not tokens:
             continue
         if header_index is None:
-            header_index = next((index for index, token in enumerate(tokens) if normalized_header_token(token) == "freeratio"), None)
+            header_index = next(
+                (
+                    index
+                    for index, token in enumerate(tokens)
+                    if normalized_header_token(token) == "freeratio"
+                ),
+                None,
+            )
+            if header_index is not None:
+                header_width = len(tokens)
             continue
         if is_separator_line(line):
             continue
-        if len(tokens) > header_index:
-            value = parse_numeric_token(tokens[header_index])
+        if header_width is None:
+            continue
+        # Some Comware platforms prefix the data row with "Mem:" while the
+        # header starts directly at Total/Used/Free/.../FreeRatio. Shift the
+        # target column by the row/header width difference instead of treating
+        # Cached as FreeRatio.
+        data_index = header_index + max(0, len(tokens) - header_width)
+        if len(tokens) > data_index:
+            value = parse_numeric_token(tokens[data_index])
             if value is not None:
                 return line_no, value, line
     return None

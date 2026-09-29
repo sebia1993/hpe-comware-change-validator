@@ -4,8 +4,9 @@ from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
 from streamlit.testing.v1 import AppTest
-from portfolio_demo.fixture_collector import COMMANDS, DEVICES
+from portfolio_demo.fixture_collector import COMMANDS, DATA, DEVICES
 from portfolio_demo.runtime import DemoRuntime
+from portfolio_demo.scenario_view import temporal_comparison_rows
 from portfolio_demo.scenario_runner import (
     ScenarioRunner,
     counts,
@@ -13,6 +14,27 @@ from portfolio_demo.scenario_runner import (
     business_finding,
     SCENARIOS,
 )
+
+
+class FixtureFormatTests(unittest.TestCase):
+    def test_official_format_synthetic_fixtures_have_comware_shapes(self):
+        commands = DATA["commands"]
+        self.assertIn(
+            "Brief information on interface(s) under route mode:",
+            commands["interface_brief"][2],
+        )
+        self.assertIn(
+            "Aggregation Interface Type:",
+            commands["link_aggregation_summary"][2],
+        )
+        self.assertIn("VLAN ID: 10", commands["vlan_summary"][2])
+        self.assertIn("Neighbor Brief Information", commands["ospf_peer"][2])
+        self.assertIn("Public Routing Table : OSPF", commands["ospf_routes"][2])
+        self.assertIn("IPv4 Standby Information:", commands["vrrp_status"][2])
+        self.assertIn("Unit CPU usage:", commands["cpu_usage"][2])
+        self.assertIn("FreeRatio", commands["memory_usage"][2])
+        self.assertIn("Power   1 State: Normal", commands["power_status"][2])
+        self.assertIn("State : Normal", commands["fan_status"][2])
 
 
 class DemoTests(unittest.TestCase):
@@ -63,7 +85,14 @@ class DemoTests(unittest.TestCase):
                 )
             r.capture("복구 후")
             self.assertEqual(r.pair, (0, 2))
-            self.assertTrue(all(x["Classification"] == "Unchanged" for x in r.rows))
+            self.assertTrue(
+                all(x["Classification"] == "Unchanged" for x in r.rows),
+                [
+                    (x["Device"], x["Command"], x["Classification"], x["Severity"])
+                    for x in r.rows
+                    if x["Classification"] != "Unchanged"
+                ],
+            )
             r.compare(1, 2)
             self.assertEqual(
                 sum(x["Classification"] == "Unknown" for x in r.rows),
@@ -434,6 +463,23 @@ class ScenarioTests(unittest.TestCase):
         self.assertIsNotNone(r.execution.elapsed_ms)
         self.assertEqual(r.execution.depth, 0)
 
+    def test_representative_compares_same_devices_across_two_timepoints(self):
+        runner = self.runner("representative")
+        r = runner.runtime
+        rows = temporal_comparison_rows(r)
+
+        self.assertEqual(
+            {row["동일 장비"] for row in rows},
+            {"DEMO-BB3", "DEMO-BB4"},
+        )
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertEqual(row["T0 수집 결과"], len(COMMANDS))
+            self.assertEqual(row["T1 수집 결과"], len(COMMANDS))
+            self.assertEqual(row["동일 항목 비교"], len(COMMANDS) + 1)
+            self.assertNotEqual(row["T0 · 기준 시점"], "")
+            self.assertNotEqual(row["T1 · 비교 시점"], "")
+
     def test_representative_has_broad_realistic_comparison_scope(self):
         runner = self.runner("representative")
         r = runner.runtime
@@ -489,7 +535,15 @@ class ScenarioTests(unittest.TestCase):
     def test_normal_has_only_planned_or_unchanged_results(self):
         r = self.runner("normal").runtime
         values = counts(r)
-        self.assertEqual(values["Unexpected"], 0)
+        self.assertEqual(
+            values["Unexpected"],
+            0,
+            [
+                (row["Device"], row["Command"], row["Classification"], row["Severity"])
+                for row in r.rows
+                if row["Classification"] == "Unexpected"
+            ],
+        )
         self.assertEqual(values["Unknown"], 0)
         self.assertGreater(values["Expected"], 0)
         self.assertFalse(
@@ -626,6 +680,12 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(metrics["전체 비교 항목"], str(len(r.rows)))
         self.assertEqual(metrics["대상 장비"], str(len(DEVICES)))
         self.assertEqual(metrics["점검 분야"], "8")
+        self.assertTrue(
+            any(
+                "핵심 비교 방식 · 같은 장비의 T0 ↔ T1" in markdown.value
+                for markdown in app.markdown
+            )
+        )
         self.assertTrue(
             any("가장 먼저 확인할 결과" in markdown.value for markdown in app.markdown)
         )
