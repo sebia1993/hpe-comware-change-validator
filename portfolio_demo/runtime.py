@@ -197,8 +197,8 @@ class DemoRuntime:
         if planned_vlan:
             rules.append(
                 ExpectedChangeRule(
-                    command_ids=("vlan", "interface_description"),
-                    title="계획된 VLAN / Description 변경",
+                    command_ids=("vlan_summary",),
+                    title="계획된 VLAN 변경",
                 )
             )
         config = replace(
