@@ -1,7 +1,13 @@
 """Business-language presentation of the same runtime evidence."""
 
 from html import escape
-from portfolio_demo.scenario_runner import LABELS, business_finding, conclusion, counts
+from portfolio_demo.scenario_runner import (
+    LABELS,
+    TOPICS,
+    business_finding,
+    conclusion,
+    counts,
+)
 
 
 def render_timeline(runner, slot):
@@ -92,6 +98,91 @@ def render_result(runtime, st):
     st.caption(
         "수치는 분석 항목 수입니다. 각 항목은 한 분류에만 포함되며, 장비 대수나 전체 네트워크 안전 보장을 뜻하지 않습니다."
     )
+
+
+
+CATEGORY_LABELS = {
+    "basic": "기본 정보",
+    "hardware": "하드웨어",
+    "interface": "인터페이스 / LACP",
+    "switching": "스위칭",
+    "routing": "라우팅 / 이중화",
+    "resource": "CPU / Memory",
+    "log": "최근 로그",
+    "connection": "장비 접속 상태",
+}
+CATEGORY_ORDER = {
+    key: index for index, key in enumerate(CATEGORY_LABELS)
+}
+
+
+def comparison_scope(runtime):
+    grouped = {}
+    for row in runtime.rows:
+        category = row["Category"]
+        bucket = grouped.setdefault(
+            category,
+            {
+                "분야": CATEGORY_LABELS.get(category, category),
+                "비교 항목": 0,
+                "정상 유지": 0,
+                "작업 계획과 일치": 0,
+                "추가 확인 필요": 0,
+                "정보 부족": 0,
+            },
+        )
+        bucket["비교 항목"] += 1
+        bucket[LABELS[row["Classification"]]] += 1
+    return [
+        grouped[key]
+        for key in sorted(
+            grouped,
+            key=lambda value: (CATEGORY_ORDER.get(value, 99), value),
+        )
+    ]
+
+
+def render_comparison_scope(runtime, st):
+    if not runtime.summary:
+        return
+
+    st.markdown("### 무엇을 비교했나요?")
+    values = counts(runtime)
+    devices = {row["Device"] for row in runtime.rows}
+    categories = {row["Category"] for row in runtime.rows}
+    changed = values["Expected"] + values["Unexpected"] + values["Unknown"]
+
+    metrics = st.columns(4)
+    metrics[0].metric("전체 비교 항목", len(runtime.rows))
+    metrics[1].metric("대상 장비", len(devices))
+    metrics[2].metric("점검 분야", len(categories))
+    metrics[3].metric("변화 / 확인 필요", changed)
+
+    st.caption(
+        "먼저 '추가 확인 필요'와 '정보 부족'을 확인하고, "
+        "'정상 유지'는 작업 후에도 바뀌지 않은 상태를 뜻합니다."
+    )
+    st.dataframe(
+        comparison_scope(runtime),
+        hide_index=True,
+        width="stretch",
+    )
+
+    with st.expander(f"전체 {len(runtime.rows)}개 비교 항목 보기", expanded=False):
+        table = []
+        for row in runtime.rows:
+            table.append(
+                {
+                    "분야": CATEGORY_LABELS.get(row["Category"], row["Category"]),
+                    "장비": row["Device"],
+                    "점검 항목": TOPICS.get(row["Command"], row["Command"]),
+                    "분류": LABELS[row["Classification"]],
+                    "위험도": row["Severity"],
+                    "비교 결과": row["Finding"],
+                }
+            )
+        st.dataframe(table, hide_index=True, width="stretch")
+
 
 
 def render_business_trace(runtime, slot):
