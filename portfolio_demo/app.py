@@ -768,7 +768,8 @@ st.write(
     "같은 장비를 작업 전(T0)과 작업 후(T1)에 다시 수집해, 시점 사이에 달라진 상태를 자동 검증합니다."
 )
 st.caption(
-    "HPE Comware Change Validator · Public Web Edition · 비식별 합성 데이터 · 실제 장비 변경 없음"
+    "HPE Comware Change Validator · Public Web Edition · "
+    "HPE 공식 Comware 출력 형식 참고 · 값은 비식별 합성 · 실제 장비 변경 없음"
 )
 render_reviewer_summary()
 controls = st.container()
@@ -839,8 +840,16 @@ with st.expander("기술 상세 / 직접 조작", expanded=False):
         render_logs_page()
 
 st.caption("Public Web Edition · 실제 장비 접속 없이 공개 합성 입력으로 검증합니다.")
-st.link_button(
-    "GitHub Source", "https://github.com/sebia1993/hpe-comware-change-validator"
+links = st.columns(2)
+links[0].link_button(
+    "GitHub Source",
+    "https://github.com/sebia1993/hpe-comware-change-validator",
+    use_container_width=True,
+)
+links[1].link_button(
+    "Fixture 공식 자료 출처",
+    "https://github.com/sebia1993/hpe-comware-change-validator/blob/main/docs/FIXTURE_SOURCES.md",
+    use_container_width=True,
 )
 r.execution.on_change = None
 
