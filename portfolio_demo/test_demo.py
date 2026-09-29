@@ -493,7 +493,18 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(values["Unknown"], 0)
         self.assertGreater(values["Expected"], 0)
         self.assertFalse(
-            any(i.severity in ("Critical", "Warning") for i in r.summary.items)
+            any(
+                row["Classification"] == "Unexpected"
+                and row["Severity"] in ("Critical", "Warning")
+                for row in r.rows
+            )
+        )
+        self.assertTrue(
+            any(
+                row["Classification"] == "Expected"
+                and row["Severity"] == "Warning"
+                for row in r.rows
+            )
         )
         self.assertIn("추가 확인이 필요한 이상은 발견되지 않았습니다", conclusion(r))
 
@@ -501,15 +512,21 @@ class ScenarioTests(unittest.TestCase):
         r = self.runner("unexpected").runtime
         self.assertGreater(counts(r)["Unexpected"], 0)
         self.assertIn(str(counts(r)["Unexpected"]), conclusion(r))
+        critical_cpu_rows = [
+            row
+            for row in r.rows
+            if row["Command"] == "cpu_usage" and row["Severity"] == "Critical"
+        ]
+        self.assertTrue(critical_cpu_rows)
         for row in r.rows:
             view = business_finding(r, row)
             item = r.summary.items[view["index"]]
             self.assertEqual(view["device"], item.device_name)
             self.assertEqual(view["severity"], item.severity)
-            if row["Command"] == "cpu_usage":
-                self.assertEqual(row["Severity"], "Critical")
-                self.assertIn("처리 자원", view["message"])
-                self.assertIn("긴급 확인", view["message"])
+        for row in critical_cpu_rows:
+            view = business_finding(r, row)
+            self.assertIn("처리 자원", view["message"])
+            self.assertIn("긴급 확인", view["message"])
 
     def test_failure_retains_unknown_in_rows_report_and_business_language(self):
         r = self.runner("failure").runtime
