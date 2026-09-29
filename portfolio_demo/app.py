@@ -38,6 +38,9 @@ st.markdown(
         padding-top: 1.15rem;
         padding-bottom: 3rem;
     }
+    .st-key-scenario-status {
+        scroll-margin-top: 5rem;
+    }
     .brand-box {
         border: 1px solid rgba(120, 145, 175, .24);
         border-radius: 13px;
