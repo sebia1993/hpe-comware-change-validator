@@ -194,22 +194,26 @@ def render_reviewer_summary() -> None:
         with st.container(border=True):
             st.markdown("**프로젝트 목적**")
             st.write(
-                "네트워크 작업을 하기 전과 후의 상태를 자동으로 비교해, "
-                "의도한 변경과 예상하지 못한 이상, 그리고 확인할 수 없는 항목을 구분하는 검증 도구입니다."
+                "같은 네트워크 장비를 작업 전(T0)과 작업 후(T1)에 다시 수집해, "
+                "동일 장비의 상태가 시간에 따라 어떻게 달라졌는지 자동 비교하는 검증 도구입니다."
             )
             st.caption(
-                "쉽게 말해: 작업 전 사진과 작업 후 사진을 비교하듯 네트워크 상태의 차이를 자동으로 검사합니다."
+                "쉽게 말해: 같은 장비의 작업 전 사진과 작업 후 사진을 나란히 놓고 무엇이 달라졌는지 자동 검사합니다."
             )
     with right:
         with st.container(border=True):
             st.markdown("**이 데모에서 보여주는 것**")
             st.write(
-                "작업 전 상태 저장 → 작업 후 상태 저장 → 자동 비교 → 위험 항목 분류 → "
-                "변경 전·후 근거와 보고서 생성까지의 전체 검증 과정을 보여줍니다."
+                "동일 장비의 T0 Snapshot 저장 → 같은 장비를 T1에 재수집 → "
+                "동일 명령끼리 자동 비교 → 위험 항목 분류 → Before/After 근거와 보고서 생성을 보여줍니다."
             )
             st.caption(
                 "해커톤 관점: Before/After 데이터를 구조화하고, 변화의 의미와 우선순위를 자동으로 분류합니다."
             )
+    st.info(
+        "핵심 비교 단위는 '같은 장비 + 같은 명령 + 다른 시점'입니다. "
+        "DEMO-BB3의 T0와 DEMO-BB3의 T1, DEMO-BB4의 T0와 DEMO-BB4의 T1을 비교합니다."
+    )
 
 
 
@@ -761,7 +765,7 @@ def start_scenario(key):
 
 st.title("Network Change Validator")
 st.write(
-    "네트워크 작업 전·후 상태를 자동 비교해 작업이 정상적으로 끝났는지 확인합니다."
+    "같은 장비를 작업 전(T0)과 작업 후(T1)에 다시 수집해, 시점 사이에 달라진 상태를 자동 검증합니다."
 )
 st.caption(
     "HPE Comware Change Validator · Public Web Edition · 비식별 합성 데이터 · 실제 장비 변경 없음"
