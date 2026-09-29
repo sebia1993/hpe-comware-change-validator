@@ -423,7 +423,7 @@ def render_collection_section() -> None:
                 "공개 Web Edition에서만 비교 동작을 보여주기 위해 합성 변화 값을 주입합니다."
             )
             st.session_state.comware_demo_vlan = st.checkbox(
-                "VLAN 20 / Description 변경",
+                "VLAN 20 추가",
                 value=st.session_state.comware_demo_vlan,
             )
             st.session_state.comware_demo_resource = st.checkbox(
@@ -535,7 +535,7 @@ def render_compare_controls() -> tuple[bool, bool]:
                 value=r.options[0] if r.summary else False,
             )
             planned_vlan = st.checkbox(
-                "VLAN / Description을 계획된 변경으로 등록",
+                "VLAN 20 추가를 계획된 변경으로 등록",
                 value=r.options[1] if r.summary else False,
             )
             st.caption(
