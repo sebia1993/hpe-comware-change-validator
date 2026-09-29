@@ -2,15 +2,15 @@
 
 **[Live Demo · 브라우저에서 실행](https://sebia1993-comware-validator-demo.streamlit.app/)** · [실행·검증 안내](portfolio_demo/README.md) · [GitHub Source](https://github.com/sebia1993/hpe-comware-change-validator)
 
-> **30초 요약:** 네트워크 작업 전 상태를 기준 Snapshot으로 저장하고 작업 후 결과와 자동 비교해 **계획된 변화 / 비계획 변화 / 위험 신호 / 확인 불가**를 구분하는 변경 검증 도구입니다.
+> **30초 요약:** **같은 네트워크 장비를 작업 전(T0)과 작업 후(T1)에 다시 수집**하고, 동일 장비·동일 명령의 두 시점을 자동 비교해 **계획된 변화 / 비계획 변화 / 위험 신호 / 확인 불가**를 구분하는 변경 검증 도구입니다.
 
 
 ## 비전공 검토자를 위한 프로젝트 설명
 
 | 구분 | 설명 |
 |---|---|
-| **프로젝트 목적** | 네트워크 작업 **전과 후의 상태를 자동으로 비교**해 의도한 변경, 예상하지 못한 이상, 확인할 수 없는 항목을 구분합니다. |
-| **이 데모에서 보여주는 것** | **작업 전 상태 저장 → 작업 후 상태 저장 → 자동 비교 → 위험 항목 분류 → 변경 전·후 근거와 보고서 생성**까지의 전체 검증 과정을 보여줍니다. |
+| **프로젝트 목적** | **같은 장비를 서로 다른 시점(T0/T1)에 반복 수집**해 동일 장비의 상태가 작업 전후 어떻게 달라졌는지 자동 비교하고, 의도한 변경·예상하지 못한 이상·확인 불가 항목을 구분합니다. |
+| **이 데모에서 보여주는 것** | **DEMO-BB3(T0) ↔ DEMO-BB3(T1), DEMO-BB4(T0) ↔ DEMO-BB4(T1)**처럼 같은 장비의 동일 명령 결과를 시점별로 비교하고, 변화·위험·근거·보고서까지 연결하는 과정을 보여줍니다. |
 | **핵심 자동화** | 사람이 수십 개 상태를 눈으로 비교하던 작업을 Before/After 데이터 비교와 규칙 기반 분류로 자동화합니다. |
 
 
@@ -19,6 +19,15 @@ Live Demo에서는 **샘플 변경 검증 1-click**으로 Pre-Change → 작업 
 > **Public Web Edition:** 실제 Tk `백본 상태 추적 콘솔`의 좌측 Navigation(`장비 설정 / 비교 결과 / 작업 로그`), Topbar 상태, 접속·대상 장비·상태 수집, Snapshot 비교, 변경 상세, Raw Before/After, 보고서/공유 흐름을 브라우저로 옮겼습니다. 공개 URL에서는 실제 SSH 대신 합성 CommandResult만 공급하며 Preflight·SnapshotStore·DiffEngine·ReportWriter는 production 코드를 재사용합니다.
 
 Public Web Edition은 대표 네트워크 작업 시나리오를 한 번의 클릭으로 재생하고, 작업 전 상태 저장 → 작업 후 재수집 → 자동 비교 → 위험도 분류 → 보고서 생성까지 실제 production 로직을 통해 보여줍니다.
+
+### Public Demo 데이터 출처와 비교 방식
+
+Public Demo의 Raw CLI는 실제 사내 장비 데이터를 사용하지 않습니다. HPE 공식 Comware 문서의 공개 명령 출력에서 **필드 구조와 화면 형식만 참고**하고, IP·장비명·MAC·수치·로그는 모두 비식별 합성 값으로 다시 구성했습니다.
+
+- 같은 장비의 T0/T1 Snapshot을 `device_name + command_id` 기준으로 대응시켜 비교합니다.
+- 다른 장비끼리 비교하지 않습니다.
+- Raw CLI 형식 참고 문서는 [Public Demo Fixture Sources](docs/FIXTURE_SOURCES.md)에 정리했습니다.
+- 실제 사내 검증 데이터는 보안정책상 저장소에 포함하지 않습니다.
 
 
 [![Windows 검증](https://github.com/sebia1993/hpe-comware-change-validator/actions/workflows/pr-build.yml/badge.svg?branch=main)](https://github.com/sebia1993/hpe-comware-change-validator/actions/workflows/pr-build.yml)
