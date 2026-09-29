@@ -42,14 +42,23 @@ def conclusion(runtime):
 
 
 TOPICS = {
-    "ospf_peer": "핵심 네트워크 연결 상태",
-    "link_aggregation_summary": "여러 회선을 묶어 사용하는 연결 상태",
-    "vrrp_status": "이중화 장비의 역할",
+    "system_version": "장비 소프트웨어 기본 정보",
+    "device_status": "섀시와 모듈 상태",
+    "power_status": "전원 이중화 상태",
+    "fan_status": "팬 상태",
+    "environment_status": "온도와 환경 상태",
+    "alarm_status": "장비 알람 상태",
     "interface_brief": "장비의 회선 연결 상태",
-    "interface_description": "연결에 붙인 설명",
-    "vlan": "네트워크 구역 구성",
+    "link_aggregation_summary": "여러 회선을 묶어 사용하는 연결 상태",
+    "link_aggregation_verbose": "집계 회선의 개별 멤버 상태",
+    "vlan_summary": "네트워크 구역 구성",
+    "stp_brief": "스위칭 경로와 루트 상태",
+    "ospf_peer": "핵심 네트워크 연결 상태",
+    "ospf_routes": "라우팅 경로 상태",
+    "vrrp_status": "이중화 장비의 역할",
     "cpu_usage": "장비의 처리 자원 사용 상태",
     "memory_usage": "장비의 메모리 사용 상태",
+    "recent_log": "최근 장비 이벤트와 로그",
     "device_connectivity": "장비 정보 수집의 완전성",
 }
 
@@ -119,8 +128,10 @@ class ScenarioRunner:
             self.runtime = DemoRuntime()
         self.inputs = {
             "vlan": key in ("representative", "normal"),
-            "resource": key in ("representative", "unexpected"),
+            "resource": False,
             "timeout": key == "failure",
+            "representative": key == "representative",
+            "unexpected": key == "unexpected",
         }
         self.planned_vlan = self.inputs["vlan"]
         self.run = ScenarioRun(
@@ -268,11 +279,13 @@ class ScenarioRunner:
         )
         step.result, failed = self._snapshot_result(index)
         if self.inputs["vlan"]:
-            step.result += " · 네트워크 구역/연결 설명 변화 포함"
-        if self.inputs["resource"]:
-            step.result += " · 처리 자원 변화 포함"
+            step.result += " · 계획된 네트워크 구역 변화 포함"
+        if self.inputs["representative"]:
+            step.result += " · 연결/라우팅/자원/알람/로그 변화 포함"
+        if self.inputs["unexpected"]:
+            step.result += " · 계획 외 자원/이중화 변화 포함"
         if self.inputs["timeout"]:
-            step.result += " · 일부 정보 수집 실패 포함"
+            step.result += " · 일부 라우팅 정보 수집 실패 포함"
         step.status = "warning" if failed else "success"
 
     def _run_diff(self, step):
