@@ -42,6 +42,7 @@ COMMON_REQUIRED = {
     "backbone_state_tracker/docs/ARCHITECTURE.md",
     "backbone_state_tracker/docs/CHANGE_VALIDATION_LOGIC.md",
     "backbone_state_tracker/docs/VALIDATION_REPORT.md",
+    "backbone_state_tracker/docs/FIXTURE_SOURCES.md",
     "backbone_state_tracker/docs/PORTFOLIO_REVIEW_KO.md",
     "backbone_state_tracker/docs/PUBLIC_DEMO_V2_PLAN_KO.md",
     "backbone_state_tracker/docs/USAGE_SCREENSHOTS_KO.md",
