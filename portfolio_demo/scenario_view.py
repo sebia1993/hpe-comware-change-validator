@@ -116,6 +116,81 @@ CATEGORY_ORDER = {
 }
 
 
+def temporal_comparison_rows(runtime):
+    if runtime.pair is None:
+        return []
+
+    base_index, target_index = runtime.pair
+    base = runtime.store.load_snapshot(runtime.catalog[base_index])
+    target = runtime.store.load_snapshot(runtime.catalog[target_index])
+
+    base_devices = {
+        result.device_name for result in base.results if result.device_name
+    }
+    target_devices = {
+        result.device_name for result in target.results if result.device_name
+    }
+    rows = []
+    for device in sorted(base_devices & target_devices):
+        base_count = sum(
+            result.device_name == device for result in base.results
+        )
+        target_count = sum(
+            result.device_name == device for result in target.results
+        )
+        compared = [
+            row for row in runtime.rows if row["Device"] == device
+        ]
+        changed = sum(
+            row["Classification"] != "Unchanged" for row in compared
+        )
+        rows.append(
+            {
+                "동일 장비": device,
+                "T0 · 기준 시점": base.label,
+                "T1 · 비교 시점": target.label,
+                "T0 수집 결과": base_count,
+                "T1 수집 결과": target_count,
+                "동일 항목 비교": len(compared),
+                "변화 / 확인": changed,
+            }
+        )
+    return rows
+
+
+def render_temporal_comparison(runtime, st):
+    if runtime.pair is None:
+        return
+
+    base_index, target_index = runtime.pair
+    base = runtime.store.load_snapshot(runtime.catalog[base_index])
+    target = runtime.store.load_snapshot(runtime.catalog[target_index])
+
+    st.markdown("### 핵심 비교 방식 · 같은 장비의 T0 ↔ T1")
+    st.info(
+        "다른 장비끼리 비교하는 것이 아닙니다. "
+        "동일 장비에서 동일한 읽기 전용 명령을 두 시점에 다시 수집한 뒤 "
+        "T0(작업 전)과 T1(작업 후)의 차이를 찾습니다."
+    )
+
+    left, middle, right = st.columns([2, 1, 2])
+    with left, st.container(border=True):
+        st.markdown("**T0 · 작업 전 기준 Snapshot**")
+        st.write(base.label)
+        st.caption(base.created_at)
+    with middle:
+        st.markdown("### →")
+        st.caption("동일 장비 + 동일 명령")
+    with right, st.container(border=True):
+        st.markdown("**T1 · 작업 후 비교 Snapshot**")
+        st.write(target.label)
+        st.caption(target.created_at)
+
+    rows = temporal_comparison_rows(runtime)
+    if rows:
+        st.dataframe(rows, hide_index=True, width="stretch")
+
+
 def comparison_scope(runtime):
     grouped = {}
     for row in runtime.rows:
@@ -146,6 +221,7 @@ def render_comparison_scope(runtime, st):
     if not runtime.summary:
         return
 
+    render_temporal_comparison(runtime, st)
     st.markdown("### 무엇을 비교했나요?")
     values = counts(runtime)
     devices = {row["Device"] for row in runtime.rows}
