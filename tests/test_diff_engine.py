@@ -389,6 +389,40 @@ class DiffEngineTests(unittest.TestCase):
         item = self._diff_item(summary, "memory_usage")
         self.assertEqual(item.severity, "Warning")
 
+    def test_memory_free_ratio_hpe_mem_prefixed_table_is_parsed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base = self._snapshot(
+                root,
+                "base",
+                (
+                    "Memory statistics are measured in KB:\n"
+                    "Slot 0:\n"
+                    "            Total Used Free Shared Buffers Cached FreeRatio\n"
+                    "Mem:        4035360 1291280 2744080 0 0 0 68%"
+                ),
+                command_id="memory_usage",
+                category="resource",
+            )
+            target = self._snapshot(
+                root,
+                "target",
+                (
+                    "Memory statistics are measured in KB:\n"
+                    "Slot 0:\n"
+                    "            Total Used Free Shared Buffers Cached FreeRatio\n"
+                    "Mem:        4035360 2622984 1412376 0 0 0 35%"
+                ),
+                command_id="memory_usage",
+                category="resource",
+            )
+
+            summary = DiffEngine().compare(base, target)
+
+        item = self._diff_item(summary, "memory_usage")
+        self.assertEqual(item.severity, "Warning")
+        self.assertIn("current FreeRatio 35%", item.change_preview)
+
     def test_power_status_non_normal_state_is_critical(self) -> None:
         samples = [
             "State: Abnormal",
