@@ -20,6 +20,7 @@ from portfolio_demo.scenario_view import (
     render_timeline,
     render_run_status,
     render_result,
+    render_comparison_scope,
     render_business_trace,
     render_findings,
 )
@@ -777,6 +778,7 @@ render_run_status(runner, status_slot)
 render_timeline(runner, timeline_slot)
 with result_slot:
     render_result(r, st)
+    render_comparison_scope(r, st)
     render_reviewer_findings(r)
     if r.html:
         actions = st.columns(2)
