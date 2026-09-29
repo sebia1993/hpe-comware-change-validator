@@ -85,7 +85,14 @@ class DemoTests(unittest.TestCase):
                 )
             r.capture("복구 후")
             self.assertEqual(r.pair, (0, 2))
-            self.assertTrue(all(x["Classification"] == "Unchanged" for x in r.rows))
+            self.assertTrue(
+                all(x["Classification"] == "Unchanged" for x in r.rows),
+                [
+                    (x["Device"], x["Command"], x["Classification"], x["Severity"])
+                    for x in r.rows
+                    if x["Classification"] != "Unchanged"
+                ],
+            )
             r.compare(1, 2)
             self.assertEqual(
                 sum(x["Classification"] == "Unknown" for x in r.rows),
@@ -528,7 +535,15 @@ class ScenarioTests(unittest.TestCase):
     def test_normal_has_only_planned_or_unchanged_results(self):
         r = self.runner("normal").runtime
         values = counts(r)
-        self.assertEqual(values["Unexpected"], 0)
+        self.assertEqual(
+            values["Unexpected"],
+            0,
+            [
+                (row["Device"], row["Command"], row["Classification"], row["Severity"])
+                for row in r.rows
+                if row["Classification"] == "Unexpected"
+            ],
+        )
         self.assertEqual(values["Unknown"], 0)
         self.assertGreater(values["Expected"], 0)
         self.assertFalse(
