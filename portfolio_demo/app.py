@@ -16,14 +16,34 @@ from portfolio_demo.runtime import DemoRuntime
 from portfolio_demo.execution_trace import render_trace
 from portfolio_demo.guided_flow import GuidedSlot, begin
 from portfolio_demo.scenario_runner import SCENARIOS, ScenarioRunner, business_finding
-from portfolio_demo.scenario_view import (
-    render_timeline,
-    render_run_status,
-    render_result,
-    render_comparison_scope,
-    render_business_trace,
-    render_findings,
-)
+from portfolio_demo import scenario_view
+
+render_timeline = scenario_view.render_timeline
+render_result = scenario_view.render_result
+render_business_trace = scenario_view.render_business_trace
+render_findings = scenario_view.render_findings
+
+
+def render_run_status(runner, streamlit_module):
+    renderer = getattr(scenario_view, "render_run_status", None)
+    if renderer is not None:
+        return renderer(runner, streamlit_module)
+    if runner and runner.run and runner.run.completed:
+        streamlit_module.success("COMPLETED · 검증 완료")
+    elif runner and runner.run:
+        streamlit_module.info("RUNNING · 검증 실행 중")
+    else:
+        streamlit_module.info("READY · 대표 검증을 실행하세요.")
+
+
+def render_comparison_scope(runtime, streamlit_module):
+    renderer = getattr(scenario_view, "render_comparison_scope", None)
+    if renderer is not None:
+        return renderer(runtime, streamlit_module)
+    if runtime.summary is not None:
+        streamlit_module.caption(
+            "비교 범위 상세는 아래 전체 비교 결과에서 확인할 수 있습니다."
+        )
 
 st.set_page_config(
     page_title="Network Change Validator · Public Web Edition",

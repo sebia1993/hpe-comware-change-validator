@@ -1,4 +1,4 @@
-# Rebuild the Cloud process for the six-stage runtime rollout (2026-09-29).
+# Rebuild the Cloud process after comparison-dataset import hotfix (2026-09-29).
 # Keep dependency versions unchanged when refreshing imported application modules.
 streamlit==1.62.0
 PyYAML==6.0.3
