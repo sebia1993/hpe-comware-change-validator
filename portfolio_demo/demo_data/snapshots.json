@@ -3,154 +3,154 @@
     "system_clock": [
       "display clock",
       "basic",
-      "Clock: 2026-09-29 15:00:00"
+      "<DEMO> display clock\n15:00:00 KST Mon 09/29/2026"
     ],
     "system_version": [
       "display version",
       "basic",
-      "HPE Comware Software, Version 7.1.070\nBoot image: flash:/system.bin\nUptime: 120 days"
+      "<DEMO> display version\nHPE Comware Software, Version 7.1.070, Release DEMO\nCopyright (c) Hewlett Packard Enterprise Development LP\nHPE Demo Switch uptime is 17 weeks, 1 day, 3 hours, 20 minutes\nBoot image: flash:/demo-cmw710-boot.bin\nSystem image: flash:/demo-cmw710-system.bin"
     ],
     "device_status": [
       "display device",
       "hardware",
-      "Slot 1 State: Normal\nModule 1 State: Normal"
+      "<DEMO> display device\nSlot Type                         State    Subslot  Soft Ver    Patch Ver\n1    DEMO-COMWARE-SWITCH          Normal   0        DEMO         None"
     ],
     "power_status": [
       "display power",
       "hardware",
-      "Power 1 State: Normal\nPower 2 State: Normal"
+      "<DEMO> display power\n Slot 1:\n Power   1 State: Normal\n Power   2 State: Normal"
     ],
     "fan_status": [
       "display fan",
       "hardware",
-      "Fan 1 State: Normal\nFan 2 State: Normal"
+      "<DEMO> display fan\n Slot 1:\n Fan 1:\n State : Normal\n Fan 2:\n State : Normal"
     ],
     "environment_status": [
       "display environment",
       "hardware",
-      "Temperature 32 C State: Normal"
+      "<DEMO> display environment\n System temperature information (degree centigrade):\n ------------------------------------------------------------\n Slot Sensor     Temperature Lower Warning Alarm Shutdown\n 1    hotspot 1  32          0     70      85    100\n 1    hotspot 2  35          0     75      90    105"
     ],
     "alarm_status": [
       "display alarm",
       "hardware",
-      "No Alarm"
+      "<DEMO> display alarm\n Chassis Slot CPU Level Info\n -       -    -   INFO  No active hardware alarm"
     ],
     "interface_brief": [
       "display interface brief",
       "interface",
-      "GE1/0/1 UP\nGE1/0/2 UP\nGE1/0/3 UP\nGE1/0/4 UP"
+      "<DEMO> display interface brief\n Brief information on interface(s) under route mode:\n Link: ADM - administratively down; Stby - standby\n Protocol: (s) - spoofing\n Interface            Link Protocol Main IP         Description\n XGE1/0/1            UP   UP       --              Uplink-A\n XGE1/0/2            UP   UP       --              Uplink-B\n XGE1/0/3            UP   UP       --              Server-A\n XGE1/0/4            UP   UP       --              Server-B"
     ],
     "link_aggregation_summary": [
       "display link-aggregation summary",
       "interface",
-      "Aggregation1 selected ports: 2\nAggregation2 selected ports: 2"
+      "<DEMO> display link-aggregation summary\n Aggregation Interface Type:\n BAGG -- Bridge-Aggregation, RAGG -- Route-Aggregation\n Aggregation Mode: S -- Static, D -- Dynamic\n Loadsharing Type: Shar -- Loadsharing, NonS -- Non-Loadsharing\n AGG         AGG   Partner ID          Select Unselect Share\n Interface   Mode                      Ports  Ports    Type\n ----------------------------------------------------------\n BAGG1       D     0x8000,0011-2233-4455  2      0    Shar\n BAGG2       D     0x8000,0011-2233-4466  2      0    Shar"
     ],
     "link_aggregation_verbose": [
       "display link-aggregation verbose",
       "interface",
-      "Aggregation1 GE1/0/1 Selected\nAggregation1 GE1/0/2 Selected\nAggregation2 GE1/0/3 Selected\nAggregation2 GE1/0/4 Selected"
+      "<DEMO> display link-aggregation verbose\n Aggregate Interface: Bridge-Aggregation1\n Aggregation Mode: Dynamic\n Local:\n Port             Status      Priority Oper-Key\n XGE1/0/1         Selected    32768    1\n XGE1/0/2         Selected    32768    1\n Aggregate Interface: Bridge-Aggregation2\n Aggregation Mode: Dynamic\n Local:\n Port             Status      Priority Oper-Key\n XGE1/0/3         Selected    32768    2\n XGE1/0/4         Selected    32768    2"
     ],
     "vlan_summary": [
       "display vlan",
       "switching",
-      "VLAN ID: 10 Name: Users\nVLAN ID: 30 Name: Server"
+      "<DEMO> display vlan\n VLAN ID: 10\n VLAN type: Static\n Description: Users\n Name: VLAN0010\n Tagged ports: Bridge-Aggregation1\n\n VLAN ID: 30\n VLAN type: Static\n Description: Server\n Name: VLAN0030\n Tagged ports: Bridge-Aggregation2"
     ],
     "stp_brief": [
       "display stp brief",
       "switching",
-      "Root Bridge: 0000-5e00-5303\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING"
+      "<DEMO> display stp brief\n MSTID Port                     Role  STP State Protection\n 0     Bridge-Aggregation1      ROOT  FORWARDING NONE\n 0     Bridge-Aggregation2      DESI  FORWARDING NONE\n Root Bridge: 0000-5e00-5303"
     ],
     "ospf_peer": [
       "display ospf peer",
       "routing",
-      "Neighbor 192.0.2.4 State Full"
+      "<DEMO> display ospf peer\n OSPF Process 1 with Router ID 192.0.2.3\n Neighbor Brief Information\n Area: 0.0.0.0\n Router ID       Address         Pri Dead-Time Interface     State\n 192.0.2.4       192.0.2.4       1   38        Vlan100       Full/DR"
     ],
     "ospf_routes": [
       "display ip routing-table protocol ospf",
       "routing",
-      "10.20.0.0/16 via 192.0.2.4 Cost 10\n10.30.0.0/16 via 192.0.2.4 Cost 10"
+      "<DEMO> display ip routing-table protocol ospf\n Public Routing Table : OSPF\n Summary Count : 2\n Destination/Mask    Proto Pre Cost NextHop       Interface\n 10.20.0.0/16        OSPF  10  10   192.0.2.4     Vlan100\n 10.30.0.0/16        OSPF  10  10   192.0.2.4     Vlan100"
     ],
     "vrrp_status": [
-      "show vrrp",
+      "display vrrp verbose",
       "routing",
-      "VRID 1 State Master Priority 110 VIP 192.0.2.254"
+      "<DEMO> display vrrp verbose\n IPv4 Standby Information:\n Run Mode       : Standard\n Run Method     : Virtual MAC\n Total number of virtual routers : 1\n Interface Vlan-interface10\n VRID           : 1              Adver Timer : 1\n Admin Status   : Up             State       : Master\n Config Pri     : 110            Running Pri : 110\n Preempt Mode   : Yes            Delay Time  : 5\n Auth Type      : None\n Virtual IP     : 192.0.2.254\n Master IP      : 192.0.2.3"
     ],
     "cpu_usage": [
       "display cpu-usage",
       "resource",
-      "5 seconds: 12%\n1 minute: 11%\n5 minutes: 10%"
+      "<DEMO> display cpu-usage\n Unit CPU usage:\n       12% in last 5 seconds\n       11% in last 1 minute\n       10% in last 5 minutes"
     ],
     "memory_usage": [
       "display memory",
       "resource",
-      "FreeRatio: 68%"
+      "<DEMO> display memory\n Memory statistics are measured in KB:\n Slot 0:\n             Total      Used      Free    Shared Buffers Cached FreeRatio\n Mem:        4035360   1291280   2744080 0      0       0      68%"
     ],
     "recent_log": [
       "display logbuffer",
       "log",
-      "Info: OSPF neighbors stable\nInfo: All monitored links normal"
+      "<DEMO> display logbuffer\n %Sep 29 14:58:20:101 2026 DEMO-BB3 OSPF/6/NBR_CHANGE: OSPF neighbor state stable.\n %Sep 29 14:59:11:210 2026 DEMO-BB3 IFNET/6/LINK_STATE: Monitored links are UP."
     ]
   },
   "device_baselines": {
     "DEMO-BB3": {
-      "ospf_peer": "Neighbor 192.0.2.4 State Full",
-      "ospf_routes": "10.20.0.0/16 via 192.0.2.4 Cost 10\n10.30.0.0/16 via 192.0.2.4 Cost 10",
-      "vrrp_status": "VRID 1 State Master Priority 110 VIP 192.0.2.254",
-      "cpu_usage": "5 seconds: 12%\n1 minute: 11%\n5 minutes: 10%",
-      "memory_usage": "FreeRatio: 68%"
+      "ospf_peer": "<DEMO-BB3> display ospf peer\n OSPF Process 1 with Router ID 192.0.2.3\n Neighbor Brief Information\n Area: 0.0.0.0\n Router ID       Address         Pri Dead-Time Interface     State\n 192.0.2.4       192.0.2.4       1   38        Vlan100       Full/DR",
+      "ospf_routes": "<DEMO-BB3> display ip routing-table protocol ospf\n Public Routing Table : OSPF\n Summary Count : 2\n Destination/Mask    Proto Pre Cost NextHop       Interface\n 10.20.0.0/16        OSPF  10  10   192.0.2.4     Vlan100\n 10.30.0.0/16        OSPF  10  10   192.0.2.4     Vlan100",
+      "vrrp_status": "<DEMO-BB3> display vrrp verbose\n IPv4 Standby Information:\n Interface Vlan-interface10\n VRID           : 1              Adver Timer : 1\n Admin Status   : Up             State       : Master\n Config Pri     : 110            Running Pri : 110\n Virtual IP     : 192.0.2.254\n Master IP      : 192.0.2.3",
+      "cpu_usage": "<DEMO-BB3> display cpu-usage\n Unit CPU usage:\n       12% in last 5 seconds\n       11% in last 1 minute\n       10% in last 5 minutes",
+      "memory_usage": "<DEMO-BB3> display memory\n Memory statistics are measured in KB:\n Slot 0:\n             Total      Used      Free    Shared Buffers Cached FreeRatio\n Mem:        4035360   1291280   2744080 0      0       0      68%"
     },
     "DEMO-BB4": {
-      "ospf_peer": "Neighbor 192.0.2.3 State Full",
-      "ospf_routes": "10.20.0.0/16 via 192.0.2.3 Cost 10\n10.30.0.0/16 via 192.0.2.3 Cost 10",
-      "vrrp_status": "VRID 1 State Backup Priority 100 VIP 192.0.2.254",
-      "cpu_usage": "5 seconds: 9%\n1 minute: 9%\n5 minutes: 8%",
-      "memory_usage": "FreeRatio: 72%"
+      "ospf_peer": "<DEMO-BB4> display ospf peer\n OSPF Process 1 with Router ID 192.0.2.4\n Neighbor Brief Information\n Area: 0.0.0.0\n Router ID       Address         Pri Dead-Time Interface     State\n 192.0.2.3       192.0.2.3       1   36        Vlan100       Full/BDR",
+      "ospf_routes": "<DEMO-BB4> display ip routing-table protocol ospf\n Public Routing Table : OSPF\n Summary Count : 2\n Destination/Mask    Proto Pre Cost NextHop       Interface\n 10.20.0.0/16        OSPF  10  10   192.0.2.3     Vlan100\n 10.30.0.0/16        OSPF  10  10   192.0.2.3     Vlan100",
+      "vrrp_status": "<DEMO-BB4> display vrrp verbose\n IPv4 Standby Information:\n Interface Vlan-interface10\n VRID           : 1              Adver Timer : 1\n Admin Status   : Up             State       : Backup\n Config Pri     : 100            Running Pri : 100\n Virtual IP     : 192.0.2.254\n Master IP      : 192.0.2.3",
+      "cpu_usage": "<DEMO-BB4> display cpu-usage\n Unit CPU usage:\n       9% in last 5 seconds\n       9% in last 1 minute\n       8% in last 5 minutes",
+      "memory_usage": "<DEMO-BB4> display memory\n Memory statistics are measured in KB:\n Slot 0:\n             Total      Used      Free    Shared Buffers Cached FreeRatio\n Mem:        4035360   1129900   2905460 0      0       0      72%"
     }
   },
   "scenarios": {
     "no_change": {},
     "expected": {
-      "vlan_summary": "VLAN ID: 10 Name: Users\nVLAN ID: 20 Name: Change-Window\nVLAN ID: 30 Name: Server"
+      "vlan_summary": "<DEMO> display vlan\n VLAN ID: 10\n VLAN type: Static\n Description: Users\n Name: VLAN0010\n Tagged ports: Bridge-Aggregation1\n\n VLAN ID: 20\n VLAN type: Static\n Description: Change-Window\n Name: VLAN0020\n Tagged ports: Bridge-Aggregation1\n\n VLAN ID: 30\n VLAN type: Static\n Description: Server\n Name: VLAN0030\n Tagged ports: Bridge-Aggregation2"
     },
     "unexpected": {
-      "stp_brief": "Root Bridge: 0000-5e00-5304\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING",
-      "vrrp_status": "VRID 1 State Master Priority 120 VIP 192.0.2.254"
+      "stp_brief": "<DEMO> display stp brief\n MSTID Port                     Role  STP State Protection\n 0     Bridge-Aggregation1      DESI  FORWARDING NONE\n 0     Bridge-Aggregation2      ROOT  FORWARDING NONE\n Root Bridge: 0000-5e00-5304",
+      "vrrp_status": "<DEMO> display vrrp verbose\n IPv4 Standby Information:\n Interface Vlan-interface10\n VRID           : 1              Adver Timer : 1\n Admin Status   : Up             State       : Master\n Config Pri     : 120            Running Pri : 120\n Virtual IP     : 192.0.2.254\n Master IP      : 192.0.2.4"
     },
     "critical": {
-      "interface_brief": "GE1/0/1 DOWN\nGE1/0/2 UP\nGE1/0/3 UP\nGE1/0/4 UP",
-      "link_aggregation_summary": "Aggregation1 selected ports: 1\nAggregation2 selected ports: 2",
-      "link_aggregation_verbose": "Aggregation1 GE1/0/1 Unselected\nAggregation1 GE1/0/2 Selected\nAggregation2 GE1/0/3 Selected\nAggregation2 GE1/0/4 Selected",
-      "ospf_peer": "Neighbor 192.0.2.3 State Init",
-      "cpu_usage": "5 seconds: 78%\n1 minute: 72%\n5 minutes: 68%",
-      "memory_usage": "FreeRatio: 28%",
-      "power_status": "Power 1 State: Fault\nPower 2 State: Normal"
+      "interface_brief": "<DEMO> display interface brief\n Brief information on interface(s) under route mode:\n Link: ADM - administratively down; Stby - standby\n Protocol: (s) - spoofing\n Interface            Link Protocol Main IP         Description\n XGE1/0/1            DOWN DOWN     --              Uplink-A\n XGE1/0/2            UP   UP       --              Uplink-B\n XGE1/0/3            UP   UP       --              Server-A\n XGE1/0/4            UP   UP       --              Server-B",
+      "link_aggregation_summary": "<DEMO> display link-aggregation summary\n Aggregation Interface Type:\n BAGG -- Bridge-Aggregation, RAGG -- Route-Aggregation\n Aggregation Mode: S -- Static, D -- Dynamic\n AGG         AGG   Partner ID          Select Unselect Share\n Interface   Mode                      Ports  Ports    Type\n ----------------------------------------------------------\n BAGG1       D     0x8000,0011-2233-4455  1      1    NonS\n BAGG2       D     0x8000,0011-2233-4466  2      0    Shar",
+      "link_aggregation_verbose": "<DEMO> display link-aggregation verbose\n Aggregate Interface: Bridge-Aggregation1\n Aggregation Mode: Dynamic\n Local:\n Port             Status      Priority Oper-Key\n XGE1/0/1         Unselected  32768    1\n XGE1/0/2         Selected    32768    1\n Aggregate Interface: Bridge-Aggregation2\n Aggregation Mode: Dynamic\n Local:\n Port             Status      Priority Oper-Key\n XGE1/0/3         Selected    32768    2\n XGE1/0/4         Selected    32768    2",
+      "ospf_peer": "<DEMO> display ospf peer\n OSPF Process 1 with Router ID 192.0.2.4\n Neighbor Brief Information\n Area: 0.0.0.0\n Router ID       Address         Pri Dead-Time Interface     State\n 192.0.2.3       192.0.2.3       1   37        Vlan100       Init/-",
+      "cpu_usage": "<DEMO> display cpu-usage\n Unit CPU usage:\n       78% in last 5 seconds\n       72% in last 1 minute\n       68% in last 5 minutes",
+      "memory_usage": "<DEMO> display memory\n Memory statistics are measured in KB:\n Slot 0:\n             Total      Used      Free    Shared Buffers Cached FreeRatio\n Mem:        4035360   2905459   1129901 0      0       0      28%",
+      "power_status": "<DEMO> display power\n Slot 1:\n Power   1 State: Fault\n Power   2 State: Normal"
     },
     "representative": {
       "DEMO-BB3": {
-        "cpu_usage": "5 seconds: 78%\n1 minute: 72%\n5 minutes: 68%",
-        "memory_usage": "FreeRatio: 35%",
-        "alarm_status": "Minor Alarm: CPU utilization warning",
-        "recent_log": "Info: OSPF neighbors stable\nWarning: CPU utilization high during change window"
+        "cpu_usage": "<DEMO-BB3> display cpu-usage\n Unit CPU usage:\n       78% in last 5 seconds\n       72% in last 1 minute\n       68% in last 5 minutes",
+        "memory_usage": "<DEMO-BB3> display memory\n Memory statistics are measured in KB:\n Slot 0:\n             Total      Used      Free    Shared Buffers Cached FreeRatio\n Mem:        4035360   2622984   1412376 0      0       0      35%",
+        "alarm_status": "<DEMO-BB3> display alarm\n Chassis Slot CPU Level Info\n 1       1    0   MINOR CPU utilization warning",
+        "recent_log": "<DEMO-BB3> display logbuffer\n %Sep 29 15:01:12:201 2026 DEMO-BB3 DEV/4/CPU_USAGE_WARNING: CPU utilization warning threshold crossed.\n %Sep 29 15:01:20:402 2026 DEMO-BB3 OSPF/6/NBR_CHANGE: OSPF neighbor remains Full."
       },
       "DEMO-BB4": {
-        "interface_brief": "GE1/0/1 DOWN\nGE1/0/2 UP\nGE1/0/3 UP\nGE1/0/4 UP",
-        "link_aggregation_summary": "Aggregation1 selected ports: 1\nAggregation2 selected ports: 2",
-        "link_aggregation_verbose": "Aggregation1 GE1/0/1 Unselected\nAggregation1 GE1/0/2 Selected\nAggregation2 GE1/0/3 Selected\nAggregation2 GE1/0/4 Selected",
-        "stp_brief": "Root Bridge: 0000-5e00-5304\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING",
-        "ospf_peer": "Neighbor 192.0.2.3 State Init",
-        "ospf_routes": "10.20.0.0/16 via 192.0.2.1 Cost 20\n10.30.0.0/16 via 192.0.2.3 Cost 10",
-        "vrrp_status": "VRID 1 State Master Priority 120 VIP 192.0.2.254",
-        "recent_log": "Info: OSPF neighbors stable\nInterface GE1/0/1 down during validation"
+        "interface_brief": "<DEMO-BB4> display interface brief\n Brief information on interface(s) under route mode:\n Link: ADM - administratively down; Stby - standby\n Protocol: (s) - spoofing\n Interface            Link Protocol Main IP         Description\n XGE1/0/1            DOWN DOWN     --              Uplink-A\n XGE1/0/2            UP   UP       --              Uplink-B\n XGE1/0/3            UP   UP       --              Server-A\n XGE1/0/4            UP   UP       --              Server-B",
+        "link_aggregation_summary": "<DEMO-BB4> display link-aggregation summary\n Aggregation Interface Type:\n BAGG -- Bridge-Aggregation, RAGG -- Route-Aggregation\n Aggregation Mode: S -- Static, D -- Dynamic\n AGG         AGG   Partner ID          Select Unselect Share\n Interface   Mode                      Ports  Ports    Type\n ----------------------------------------------------------\n BAGG1       D     0x8000,0011-2233-4455  1      1    NonS\n BAGG2       D     0x8000,0011-2233-4466  2      0    Shar",
+        "link_aggregation_verbose": "<DEMO-BB4> display link-aggregation verbose\n Aggregate Interface: Bridge-Aggregation1\n Aggregation Mode: Dynamic\n Local:\n Port             Status      Priority Oper-Key\n XGE1/0/1         Unselected  32768    1\n XGE1/0/2         Selected    32768    1\n Aggregate Interface: Bridge-Aggregation2\n Aggregation Mode: Dynamic\n Local:\n Port             Status      Priority Oper-Key\n XGE1/0/3         Selected    32768    2\n XGE1/0/4         Selected    32768    2",
+        "stp_brief": "<DEMO-BB4> display stp brief\n MSTID Port                     Role  STP State Protection\n 0     Bridge-Aggregation1      DESI  FORWARDING NONE\n 0     Bridge-Aggregation2      ROOT  FORWARDING NONE\n Root Bridge: 0000-5e00-5304",
+        "ospf_peer": "<DEMO-BB4> display ospf peer\n OSPF Process 1 with Router ID 192.0.2.4\n Neighbor Brief Information\n Area: 0.0.0.0\n Router ID       Address         Pri Dead-Time Interface     State\n 192.0.2.3       192.0.2.3       1   37        Vlan100       Init/-",
+        "ospf_routes": "<DEMO-BB4> display ip routing-table protocol ospf\n Public Routing Table : OSPF\n Summary Count : 2\n Destination/Mask    Proto Pre Cost NextHop       Interface\n 10.20.0.0/16        OSPF  10  20   192.0.2.1     Vlan200\n 10.30.0.0/16        OSPF  10  10   192.0.2.3     Vlan100",
+        "vrrp_status": "<DEMO-BB4> display vrrp verbose\n IPv4 Standby Information:\n Interface Vlan-interface10\n VRID           : 1              Adver Timer : 1\n Admin Status   : Up             State       : Master\n Config Pri     : 120            Running Pri : 120\n Virtual IP     : 192.0.2.254\n Master IP      : 192.0.2.4",
+        "recent_log": "<DEMO-BB4> display logbuffer\n %Sep 29 15:01:05:330 2026 DEMO-BB4 IFNET/3/PHY_UPDOWN: Physical state on XGE1/0/1 changed to DOWN.\n %Sep 29 15:01:08:101 2026 DEMO-BB4 OSPF/4/NBR_CHANGE: Neighbor 192.0.2.3 state changed from Full to Init."
       }
     },
     "unexpected_demo": {
       "DEMO-BB3": {
-        "cpu_usage": "5 seconds: 85%\n1 minute: 80%\n5 minutes: 75%",
-        "memory_usage": "FreeRatio: 32%"
+        "cpu_usage": "<DEMO-BB3> display cpu-usage\n Unit CPU usage:\n       85% in last 5 seconds\n       80% in last 1 minute\n       75% in last 5 minutes",
+        "memory_usage": "<DEMO-BB3> display memory\n Memory statistics are measured in KB:\n Slot 0:\n             Total      Used      Free    Shared Buffers Cached FreeRatio\n Mem:        4035360   2744045   1291315 0      0       0      32%"
       },
       "DEMO-BB4": {
-        "stp_brief": "Root Bridge: 0000-5e00-5304\nGE1/0/1 FORWARDING\nGE1/0/2 FORWARDING",
-        "vrrp_status": "VRID 1 State Master Priority 120 VIP 192.0.2.254"
+        "stp_brief": "<DEMO-BB4> display stp brief\n MSTID Port                     Role  STP State Protection\n 0     Bridge-Aggregation1      DESI  FORWARDING NONE\n 0     Bridge-Aggregation2      ROOT  FORWARDING NONE\n Root Bridge: 0000-5e00-5304",
+        "vrrp_status": "<DEMO-BB4> display vrrp verbose\n IPv4 Standby Information:\n Interface Vlan-interface10\n VRID           : 1              Adver Timer : 1\n Admin Status   : Up             State       : Master\n Config Pri     : 120            Running Pri : 120\n Virtual IP     : 192.0.2.254\n Master IP      : 192.0.2.4"
       }
     },
     "collection_failed": {
