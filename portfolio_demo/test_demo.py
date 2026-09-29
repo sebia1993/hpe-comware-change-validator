@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
 from streamlit.testing.v1 import AppTest
+from portfolio_demo.fixture_collector import COMMANDS, DEVICES
 from portfolio_demo.runtime import DemoRuntime
 from portfolio_demo.scenario_runner import (
     ScenarioRunner,
@@ -36,7 +37,10 @@ class DemoTests(unittest.TestCase):
                 )
             )
             self.assertTrue(any(x["Severity"] == "Warning" for x in r.rows))
-            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 11)
+            self.assertEqual(
+                sum(x["Classification"] == "Unknown" for x in r.rows),
+                len(COMMANDS) + 1,
+            )
             r.compare(0, 1, planned_off=True)
             self.assertTrue(
                 any(
@@ -61,13 +65,19 @@ class DemoTests(unittest.TestCase):
             self.assertEqual(r.pair, (0, 2))
             self.assertTrue(all(x["Classification"] == "Unchanged" for x in r.rows))
             r.compare(1, 2)
-            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 11)
+            self.assertEqual(
+                sum(x["Classification"] == "Unknown" for x in r.rows),
+                len(COMMANDS) + 1,
+            )
             r.capture(
                 "사용자 지정", "VLAN rollout", vlan=True, resource=True, timeout=True
             )
             self.assertEqual(r.pair, (0, 3))
             r.compare(0, 3, planned_vlan=True)
-            self.assertEqual(sum(x["Classification"] == "Expected" for x in r.rows), 4)
+            self.assertEqual(
+                sum(x["Classification"] == "Expected" for x in r.rows),
+                len(DEVICES),
+            )
             self.assertTrue(
                 any(
                     x["Command"] == "cpu_usage"
@@ -76,7 +86,7 @@ class DemoTests(unittest.TestCase):
                     for x in r.rows
                 )
             )
-            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 1)
+            self.assertEqual(sum(x["Classification"] == "Unknown" for x in r.rows), 2)
             self.assertTrue(any(i.changed_lines for i in r.summary.items))
             r.capture("작업 전")
             self.assertEqual(r.baseline, 4)
@@ -424,6 +434,58 @@ class ScenarioTests(unittest.TestCase):
         self.assertIsNotNone(r.execution.elapsed_ms)
         self.assertEqual(r.execution.depth, 0)
 
+    def test_representative_has_broad_realistic_comparison_scope(self):
+        runner = self.runner("representative")
+        r = runner.runtime
+
+        self.assertEqual(len(COMMANDS), 18)
+        self.assertEqual(len(DEVICES), 2)
+        self.assertEqual(len(r.rows), len(COMMANDS) * len(DEVICES) + len(DEVICES))
+
+        categories = {row["Category"] for row in r.rows}
+        self.assertTrue(
+            {
+                "basic",
+                "hardware",
+                "interface",
+                "switching",
+                "routing",
+                "resource",
+                "log",
+                "connection",
+            }
+            <= categories
+        )
+
+        values = counts(r)
+        self.assertGreater(values["Unchanged"], values["Expected"])
+        self.assertGreater(values["Unexpected"], 5)
+        self.assertEqual(values["Expected"], len(DEVICES))
+        self.assertEqual(values["Unknown"], 0)
+
+        changed_commands = {
+            row["Command"]
+            for row in r.rows
+            if row["Classification"] in {"Expected", "Unexpected"}
+        }
+        self.assertTrue(
+            {
+                "interface_brief",
+                "link_aggregation_summary",
+                "link_aggregation_verbose",
+                "vlan_summary",
+                "stp_brief",
+                "ospf_peer",
+                "ospf_routes",
+                "vrrp_status",
+                "cpu_usage",
+                "memory_usage",
+                "alarm_status",
+                "recent_log",
+            }
+            <= changed_commands
+        )
+
     def test_normal_has_only_planned_or_unchanged_results(self):
         r = self.runner("normal").runtime
         values = counts(r)
@@ -544,6 +606,9 @@ class ScenarioTests(unittest.TestCase):
         metrics = {m.label: m.value for m in app.metric}
         self.assertEqual(metrics["작업 계획과 일치"], str(counts(r)["Expected"]))
         self.assertEqual(metrics["추가 확인 필요"], str(counts(r)["Unexpected"]))
+        self.assertEqual(metrics["전체 비교 항목"], str(len(r.rows)))
+        self.assertEqual(metrics["대상 장비"], str(len(DEVICES)))
+        self.assertEqual(metrics["점검 분야"], "8")
         self.assertTrue(
             any("가장 먼저 확인할 결과" in markdown.value for markdown in app.markdown)
         )
